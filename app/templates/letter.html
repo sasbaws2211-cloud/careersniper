@@ -1,0 +1,38 @@
+{% extends "_tenant.html" %}
+{% block title %}{{ doc.title }} · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<p><a href="/letters">&larr; All cover letters</a></p>
+<div class="hero"><h1>{{ doc.title }}</h1>
+  <div class="muted">Written {{ doc.created_at|ago }}</div></div>
+
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if saved %}<div class="ok">Saved.</div>{% endif %}
+{% if fresh %}<div class="ok">Your letter is ready. Read it through, fix anything that is not exactly true, then copy it.</div>{% endif %}
+
+<div class="card" style="border-color:#fcd34d;background:#fffbeb;color:#1f2937;font-size:0.92rem">
+  <b>Check it before you send it.</b> An AI wrote this from your résumé and the posting. It can still slip in a detail that is not true or leave out something
+  important. Make sure every claim is accurate.
+</div>
+
+<form method="post" action="/letters/{{ doc.id }}" class="card">
+  <textarea id="content" name="content" rows="20" maxlength="{{ max_chars }}" required style="width:100%;box-sizing:border-box;font-family:inherit;line-height:1.5">{{ content }}</textarea>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <button type="submit">Save changes</button>
+    <button type="button" class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('content').value).then(()=>{this.textContent='Copied'})">Copy</button>
+    <a class="btn ghost" href="/letters/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
+  </div>
+</form>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+  {% if job %}
+    <a class="btn ghost" href="/jobs/{{ job.id }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">View the job</a>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">Write a new version</a>
+    {% if not tracked and job.active %}
+    <form method="post" action="/jobs/{{ job.id }}/track" style="margin:0"><input type="hidden" name="next" value="/letters/{{ doc.id }}"><button class="ghost" type="submit">+ Track this job</button></form>
+    {% elif tracked %}<a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; In your tracker</a>{% endif %}
+  {% endif %}
+  <form method="post" action="/letters/{{ doc.id }}/delete" style="margin:0" onsubmit="return confirm('Delete this letter?')">
+    <button class="ghost" type="submit">Delete</button>
+  </form>
+</div>
+{% endblock %}

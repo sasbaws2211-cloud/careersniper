@@ -1,0 +1,78 @@
+{% extends "_plain.html" %}
+{% block title %}Checkout — {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  .checkout { max-width: 480px; margin: 40px auto; }
+  .plan-card { border: 2px solid #2563eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; background: #eff6ff; color: #1f2937; }
+  .plan-card h2 { margin: 0 0 4px; }
+  .price { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+  .price span { font-size: 1rem; font-weight: 400; color: #6b7280; }
+  .price-ghs { font-size: 0.95rem; font-weight: 500; color: #6b7280; margin-top: 2px; }
+  .error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem; }
+  .field input { width: 100%; padding: 10px 12px; border: 1px solid #94a3b8; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+  .hint { font-size: 0.85rem; color: #6b7280; margin-top: 4px; }
+  .other-plans { margin-top: 24px; font-size: 0.9rem; color: #6b7280; }
+  .other-plans a { margin-right: 12px; }
+  .co-status { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin: 16px 0; padding: 14px 16px; border-radius: 10px; border: 1px solid #93c5fd; background: #eff6ff; color: #1e3a8a; }
+  .co-status[hidden] { display: none; }
+  .co-status b { display: block; }
+  .co-status .hint { margin: 2px 0 0; color: inherit; opacity: .85; }
+  .co-ok { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+  .co-bad { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+  .co-spinner { width: 18px; height: 18px; margin-top: 2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: co-spin .8s linear infinite; flex: none; }
+  .co-spinner[hidden] { display: none; }
+  #co-actions { flex-basis: 100%; display: flex; gap: 12px; align-items: center; }
+  #co-actions:empty { display: none; }
+  .co-link { font-weight: 600; }
+  @keyframes co-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .co-spinner { animation-duration: 3s; } }
+</style>
+<div class="checkout">
+  <h1>Get full access</h1>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <div class="plan-card">
+    <h2>{{ info.label }}</h2>
+    <div class="price">${{ info.price_usd or info.price }}{% if info.interval in ('weekly', 'monthly') %} <span>/ {{ info.interval }}</span>{% elif info.interval == 'once' %} <span>for {{ info.days }} days</span>{% else %} <span>once</span>{% endif %}</div>
+    <div class="price-ghs">{{ info.price_ghs_display }}{% if info.interval in ('weekly', 'monthly') %} / {{ info.interval }}{% elif info.interval == 'once' %} for {{ info.days }} days{% else %} once{% endif %}</div>
+    <p class="muted">{{ info.description }}</p>
+  </div>
+  <div id="co-status" class="co-status" hidden role="status" aria-live="polite">
+    <div class="co-spinner" aria-hidden="true"></div>
+    <div><b id="co-title"></b><p id="co-detail" class="hint"></p></div>
+    <div id="co-actions"></div>
+  </div>
+  <form method="post" action="/checkout" id="co-form"{% if billing_on %} data-inline="1"{% endif %}>
+    <input type="hidden" name="plan" value="{{ plan }}">
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required
+             value="{{ member.email if member else '' }}"
+             placeholder="you@example.com"
+             {% if member %}readonly{% endif %}>
+      {% if not member %}<p class="hint">We'll send your receipt here. You can create an account after paying.</p>{% endif %}
+    </div>
+    {% if not member %}
+    <div class="field">
+      <label for="name">Name <span class="muted">(optional)</span></label>
+      <input id="name" name="name" type="text" placeholder="Your name">
+    </div>
+    {% endif %}
+    <button class="btn" type="submit" style="width:100%;padding:12px;font-size:1.05rem">
+      {% if billing_on %}Pay ${{ info.price_usd or info.price }} securely{% else %}Activate {{ info.label }} (dev mode){% endif %}
+    </button>
+    <p class="hint" style="text-align:center;margin-top:8px">Charged as {{ info.price_ghs_display }}{% if approx(info.price_usd, cur) %} ({{ approx(info.price_usd, cur) }}){% endif %}</p>
+    <p class="hint" style="text-align:center;color:#166534"><b>{{ REFUND_DAYS }}-day money-back promise</b> &mdash; not for you? Email us and get a full refund. <a href="/refunds">Details</a></p>
+  </form>
+  <p class="hint" style="text-align:center">Know someone job hunting? Each friend who subscribes through <a href="/referrals">your invite link</a> earns you a free week.</p>
+  <div class="other-plans">
+    Other plans:
+    {% for k, p in plans.items() %}
+      {% if k != plan %}<a href="/checkout?plan={{ k }}">{{ p.label }} — ${{ p.price_usd or p.price }}</a>{% endif %}
+    {% endfor %}
+    · <a href="/pricing">Compare</a>
+  </div>
+</div>
+{% if billing_on %}<script src="/static/checkout.js?v={{ CSS_V }}" defer></script>{% endif %}
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "_tenant.html" %}
+{% block title %}Practice · {{ s.role }} · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  .q h3 { margin: 0 0 4px; font-size: 1.02rem; }
+  .q .kind { font-size: 12px; }
+  .fb { border-left: 4px solid #2563eb; background: #eff6ff; color: #1f2937; border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+  .fb ul { margin: 4px 0 8px; padding-left: 1.2em; }
+  .stronger { white-space: pre-wrap; background: #fff; color: #1f2937; border: 1px solid #93c5fd; border-radius: 8px; padding: 10px; }
+</style>
+<p><a href="/interview">&larr; All practice sessions</a></p>
+<div class="hero"><h1>{{ s.role }}{% if s.company %} at {{ s.company }}{% endif %}</h1>
+  <div class="muted">{{ answered }} of {{ total }} answered &middot; {{ fed }} with feedback
+    {% if job %}&middot; <a href="/jobs/{{ job.id }}">view the job</a>{% endif %}</div></div>
+
+{% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}</div>{% endif %}
+{% if generic %}<div class="card muted">These are general interview questions: the AI could not make ones specific to this job this time.</div>{% endif %}
+<p class="muted" style="font-size:0.92rem">Answer in your own words, as you would out loud (aim for two minutes, about 200 to 300 words). <b>Save</b> keeps your draft for free;
+  <b>Get feedback</b> uses AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).</p>
+
+{% for q in s.questions %}
+{% set i = loop.index0 %}
+<div class="card q" id="q{{ i }}">
+  <h3>{{ loop.index }}. {{ q.q }}</h3>
+  <div class="muted kind">{{ kinds.get(q.kind, 'General') }}</div>
+  {% if q.looking_for %}<details><summary class="muted" style="cursor:pointer;font-size:0.9rem">What they are looking for</summary><p class="muted" style="margin:4px 0">{{ q.looking_for }}</p></details>{% endif %}
+  <form method="post" action="/interview/{{ s.id }}/answer/{{ i }}" style="margin-top:8px">
+    <textarea name="answer" rows="7" maxlength="{{ max_answer + 500 }}" style="width:100%;box-sizing:border-box" placeholder="Type your answer here...">{{ drafts.get(i, q.answer) }}</textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <button class="ghost" type="submit" name="action" value="save">Save draft</button>
+      <button type="submit" name="action" value="feedback">Get feedback</button>
+    </div>
+  </form>
+  {% if q.feedback %}
+  {% set f = q.feedback %}
+  <div class="fb">
+    {% if f.headline %}<p style="margin:0 0 6px"><b>{{ f.headline }}</b></p>{% endif %}
+    {% if f.strengths %}<b>What worked</b><ul>{% for x in f.strengths %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+    {% if f.improve %}<b>To improve</b><ul>{% for x in f.improve %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+    {% if f.stronger %}
+      <b>A stronger version</b> <span class="muted" style="font-size:0.85rem">(use it as a model, in your own words; fill in the [brackets] with something true)</span>
+      <div class="stronger">{{ f.stronger }}</div>
+      {% if f.new_facts %}<p style="color:#b91c1c;font-size:0.9rem;margin:6px 0 0"><b>Not in your answer or résumé:</b> {{ f.new_facts|join(' · ') }}. Do not say these unless they are true.</p>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<form method="post" action="/interview/{{ s.id }}/delete" onsubmit="return confirm('Delete this practice session and your answers?')">
+  <button class="ghost" type="submit">Delete this session</button>
+</form>
+{% endblock %}

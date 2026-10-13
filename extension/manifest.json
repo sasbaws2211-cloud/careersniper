@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "CareerSniper: see the employer's own job page",
+  "short_name": "CareerSniper",
+  "version": "0.1.0",
+  "description": "On LinkedIn and Indeed job pages, shows when the same role is on the employer's own career page, so you can apply direct.",
+  "icons": { "128": "icons/icon128.png" },
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost:8020/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/jobs/*", "https://*.indeed.com/*"],
+      "js": ["parse.js", "extract.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_title": "CareerSniper", "default_popup": "popup.html" }
+}

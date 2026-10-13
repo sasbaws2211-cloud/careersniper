@@ -1,0 +1,15 @@
+{% extends "_plain.html" %}
+{% block title %}Operator signup · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="card" style="max-width:420px;margin:40px auto">
+  <h2>Create operator account</h2>
+  <p class="muted">Platform admin for CareerSniper B2C — not a separate job board.</p>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post">
+    <label>Email <input name="email" type="email" required autofocus></label>
+    <label>Password (8+) <input name="password" type="password" minlength="8" maxlength="72" required></label>
+    <p><button>Create admin account</button></p>
+  </form>
+  <p class="muted">Already have an account? <a href="/login">Log in</a></p>
+</div>
+{% endblock %}

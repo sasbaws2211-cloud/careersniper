@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block content %}
+<h1>Audit log</h1>
+<p class="muted small">Every sign-in and every change made through this app. Entries cannot be edited or deleted from here.</p>
+<form method="get" class="filters">
+  <input name="action" value="{{ action }}" placeholder="Action, e.g. member or company.add" aria-label="Action">
+  <input name="who" value="{{ who }}" placeholder="Admin email" aria-label="Admin">
+  <button type="submit">Filter</button>{% if action or who %}<a class="btn ghost" href="/audit">Clear</a>{% endif %}
+</form>
+<div class="card flush"><table>
+  <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th><th>From</th></tr></thead>
+  {% for a in rows %}<tr><td class="muted">{{ a.created_at|dt('%d %b %H:%M:%S') }}</td><td>{{ a.admin_email }}</td><td><code>{{ a.action }}</code></td><td>{{ a.target }}</td>
+    <td class="muted small">{% if a.detail %}{% for k, v in a.detail.items() %}{{ k }}: {{ v }}{{ '; ' if not loop.last }}{% endfor %}{% endif %}</td><td class="muted small">{{ a.ip }}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">Nothing logged.</td></tr>{% endfor %}</table></div>
+{{ pager(page, pages, total, {'action': action, 'who': who}) }}
+{% endblock %}

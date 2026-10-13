@@ -1,0 +1,90 @@
+{% extends "_tenant.html" %}
+{% block title %}{{ company.name }} jobs · {{ st.open }} open roles · {{ PLATFORM }}{% endblock %}
+{% block head %}<meta name="description" content="{{ company.name }} has {{ st.open }} open role{{ '' if st.open == 1 else 's' }} on its own career page{% if st.pace_days is not none %}; jobs there typically stay open about {{ st.pace_days }} days{% endif %}.">
+<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block body %}
+<style>
+  .stats4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--card); }
+  .stat b { display: block; font-size: 1.5rem; }
+  .stat span { color: var(--muted); font-size: 0.85rem; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 8px; }
+  .bars .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 2px; }
+  .bars .pair { display: flex; align-items: flex-end; gap: 2px; height: 100%; width: 100%; justify-content: center; }
+  .bars .o, .bars .c { width: 40%; min-height: 2px; border-radius: 3px 3px 0 0; }
+  .bars .o { background: #2563eb; } .bars .c { background: #9ca3af; }
+  .bars .lbl { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .legend { font-size: 0.85rem; color: var(--muted); display: flex; gap: 14px; margin-top: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+</style>
+
+<p><a href="/companies">&larr; All companies</a></p>
+<div class="hero">
+  <div style="display:flex;gap:14px;align-items:center">
+    <div class="av" aria-hidden="true" style="width:52px;height:52px;font-size:1.4rem">{{ company.name[:1]|upper }}</div>
+    <div><h1 style="margin:0">{{ company.name }}</h1>
+      <div class="muted">{{ st.open }} open role{{ '' if st.open == 1 else 's' }}
+        {% if website %}&middot; <a href="{{ website }}" rel="nofollow noopener" target="_blank">Website &#8599;</a>{% endif %}</div></div>
+    <span style="flex:1"></span>
+    {% if following %}
+    <form method="post" action="/companies/{{ company.id }}/unfollow" style="margin:0"><button class="ghost" type="submit" title="You get an email when they open new roles">&#10003; Following</button></form>
+    {% else %}
+    <form method="post" action="/companies/{{ company.id }}/follow" style="margin:0"><button type="submit">+ Follow</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="stats4">
+  <div class="stat"><b>{{ st.open }}</b><span>open roles right now</span></div>
+  <div class="stat"><b>{{ st.new_30d if st.trend_ok else '—' }}</b><span>{% if st.trend_ok %}new roles in the last 30 days{% else %}new roles (we need two weeks of watching){% endif %}</span></div>
+  <div class="stat"><b>{% if st.pace_days is not none %}{{ st.pace_days }} days{% else %}—{% endif %}</b>
+    <span>{% if st.pace_days is not none %}typical time a role stays open{% else %}typical time a role stays open (not enough data yet){% endif %}</span></div>
+  <div class="stat"><b>{{ st.remote_pct }}%</b><span>of open roles are remote</span></div>
+</div>
+
+{% if st.trend_ok %}
+<div class="card">
+  <b>Hiring over the last 12 weeks</b>
+  <div class="muted" style="font-size:0.85rem">{{ st.opened_12w }} role{{ '' if st.opened_12w == 1 else 's' }} opened and {{ st.closed_12w }} closed</div>
+  <div class="bars" role="img" aria-label="Roles opened and closed per week for the last 12 weeks. {{ st.opened_12w }} opened, {{ st.closed_12w }} closed.">
+    {% for w in st.trend %}
+    <div class="col" title="Week of {{ w.label }}: {{ w.opened }} opened, {{ w.closed }} closed">
+      <div class="pair"><div class="o" style="height:{{ (100 * w.opened / st.trend_max)|round|int }}%"></div><div class="c" style="height:{{ (100 * w.closed / st.trend_max)|round|int }}%"></div></div>
+      <span class="lbl">{{ w.label if loop.index0 % 3 == 0 else '' }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="legend"><span><i style="background:#2563eb"></i>Opened</span><span><i style="background:#9ca3af"></i>Closed</span></div>
+  <p class="muted" style="font-size:0.8rem;margin:8px 0 0">Based on what we saw on their career page since {{ st.tracking_since.strftime('%d %b %Y') }}. Roles that were already open when we first looked are not counted as new.</p>
+</div>
+{% else %}
+<div class="card muted">We started watching {{ company.name }} {% if st.tracking_days == 0 %}today{% else %}{{ st.tracking_days }} day{{ '' if st.tracking_days == 1 else 's' }} ago{% endif %}. The hiring trend appears after two weeks.</div>
+{% endif %}
+
+{% if st.top_countries %}
+<p class="muted" style="font-size:0.9rem">Most roles are in: {% for name, n in st.top_countries %}{{ name }} ({{ n }}){{ ', ' if not loop.last }}{% endfor %}</p>
+{% endif %}
+
+<h2 style="font-size:1.15rem;margin-top:24px">Open roles</h2>
+{% if jobs %}
+  {% for j in jobs %}{% include "_job_card.html" %}{% endfor %}
+  {% if not has_access and total > jobs|length %}
+  <div class="paywall-cta">
+    <div class="big">{{ total - jobs|length }} more open role{{ '' if (total - jobs|length) == 1 else 's' }} at {{ company.name }}</div>
+    <p class="muted">Subscribe to see every role and apply straight on their career page.</p>
+    <a class="btn" href="/checkout?plan=pass" style="background:transparent;color:inherit;border:1px solid #94a3b8">3 days &mdash; $3</a>
+    <a class="btn" href="/checkout?plan=weekly" style="margin-left:8px">Weekly &mdash; $7</a>
+    <a class="btn" href="/checkout?plan=monthly" style="background:#111;margin-left:8px">Monthly &mdash; $20</a>
+  </div>
+  {% endif %}
+  {% if has_access and pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}<a class="btn" href="?page={{ page - 1 }}">&larr;</a>{% endif %}
+    <span class="muted">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn" href="?page={{ page + 1 }}">&rarr;</a>{% endif %}
+  </div>
+  {% endif %}
+{% else %}
+  <div class="card muted">{{ company.name }} has no open roles right now.</div>
+{% endif %}
+{% endblock %}

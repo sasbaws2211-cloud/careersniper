@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Admins</h1>
+<p class="muted small">People who can sign in to this app. <b>Owners</b> can also add and switch off admins and delete members. Passwords need at least {{ min_password }} characters.</p>
+<div class="card flush"><table>
+  <thead><tr><th>Email</th><th>Role</th><th>Since</th><th></th></tr></thead>
+  {% for u in rows %}
+  <tr><td>{{ u.email }}{% if u.id == admin.id %} <span class="tag">you</span>{% endif %}</td>
+    <td><span class="tag {{ 'ok' if u.role == 'owner' else ('err' if u.role == 'disabled' else '') }}">{{ u.role }}</span></td><td class="muted">{{ u.created_at|dt('%d %b %Y') }}</td>
+    <td class="actions">
+      {% if u.role in ('owner', 'admin') and (admin.is_owner or u.id == admin.id) %}
+      <form method="post" action="/admins/{{ u.id }}/password" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="password" name="password" placeholder="New password" autocomplete="new-password" required aria-label="New password"><button class="ghost small" type="submit">Set password</button></form>
+      {% endif %}
+      {% if admin.is_owner and u.role in ('owner', 'admin') and u.id != admin.id %}
+      <form method="post" action="/admins/{{ u.id }}/disable" data-confirm="Switch this admin off?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small" type="submit">Switch off</button></form>
+      {% endif %}
+    </td></tr>
+  {% endfor %}</table></div>
+
+{% if admin.is_owner %}
+<section class="card"><h2>Add an admin</h2>
+  <form method="post" action="/admins/create" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+      <label>Email<input name="email" type="email" required autocomplete="off"></label>
+      <label>Password<input name="password" type="password" required autocomplete="new-password"></label>
+      <label>Role<select name="role"><option value="admin">admin</option><option value="owner">owner</option></select></label>
+    </div>
+    <button type="submit">Add admin</button>
+  </form></section>
+{% endif %}
+{% endblock %}

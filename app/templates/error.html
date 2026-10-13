@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ title }} · {{ PLATFORM }}</title><link rel="stylesheet" href="/static/app.css?v={{ CSS_V }}"></head><body>
+<header class="top"><div class="wrap nav"><a href="/" class="brand"><img src="/static/favicon.svg" alt="" width="28" height="28"><span>{{ PLATFORM }}</span></a></div></header>
+<div class="wrap"><div class="card" style="max-width:520px;margin:48px auto;text-align:center">
+<div class="muted" style="font-size:42px;font-weight:700">{{ status }}</div><h2 style="margin:4px 0 8px">{{ title }}</h2>
+{% if message %}<p>{{ message }}</p>{% elif status == 404 %}<p class="muted">The page you were looking for isn't here. It may have moved, or the link may be wrong.</p>
+{% elif status >= 500 %}<p class="muted">Something went wrong on our side. Please try again in a moment. If it keeps happening, tell us the reference below.</p>
+{% else %}<p class="muted">We couldn't complete that request.</p>{% endif %}
+<p><a class="btn" href="/">Back to the start</a></p>
+{% if status >= 500 %}<p class="muted" style="font-size:12px">Reference: <code>{{ rid }}</code></p>{% endif %}</div></div></body></html>

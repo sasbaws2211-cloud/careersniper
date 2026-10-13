@@ -1,0 +1,43 @@
+{% extends "_plain.html" %}
+{% block title %}Operator · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Operator</h1>
+  <div class="muted">B2C registry and account — not a multi-tenant board admin.</div>
+</div>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if request.query_params.get('msg') %}<div class="ok">Saved ({{ request.query_params.get('msg') }}).</div>{% endif %}
+
+<div class="stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0">
+  <div class="card"><b>{{ feed_total }}</b><div class="muted">Active jobs</div></div>
+  <div class="card"><b>{{ clicks }}</b><div class="muted">Apply clicks (30d)</div></div>
+  <div class="card"><b><a href="{{ board_url }}">Open jobs board</a></b><div class="muted">Public feed</div></div>
+</div>
+
+<div class="card">
+  <h2>Add employer to scrape registry</h2>
+  <p class="muted">ATS board token (e.g. greenhouse token from boards.greenhouse.io/<b>token</b>).</p>
+  <form method="post" action="/admin/companies" class="grid2">
+    <label>ATS
+      <select name="ats">
+        {% for a in ats_list %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Board token <input name="board_token" required placeholder="company-slug"></label>
+    <label>Display name <input name="name" required placeholder="Company Inc"></label>
+    <div style="align-self:end"><button>Add / reactivate</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Account</h2>
+  <form method="post" action="/admin/password" class="grid2">
+    <label>Current password <input name="current" type="password" required autocomplete="current-password"></label>
+    <label>New password (8+) <input name="new" type="password" minlength="8" maxlength="72" required autocomplete="new-password"></label>
+    <div><button>Change password</button></div>
+  </form>
+  <form method="post" action="/logout" style="margin-top:12px"><button class="ghost">Log out</button></form>
+</div>
+
+<p class="muted">Scrape runs automatically when <code>ENABLE_SCHEDULER=1</code>. CLI: <code>python -m app.cli scrape</code> · <code>data-health</code></p>
+{% endblock %}

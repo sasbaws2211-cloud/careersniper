@@ -1,0 +1,26 @@
+{% extends "_tenant.html" %}
+{% block title %}Tailored résumés · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Tailored résumés</h1>
+  <div class="muted">{{ rows|length }} saved &middot; one per job you tailored for</div></div>
+<div class="tabs" style="display:flex;gap:8px;margin:0 0 16px">
+  <a class="btn ghost" href="/letters" style="background:transparent;color:inherit;border:1px solid #94a3b8">Cover letters</a>
+  <a class="btn" href="/tailored">Tailored résumés</a>
+</div>
+
+{% for doc, job in rows %}
+<div class="card" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+  <div>
+    <a href="/tailored/{{ doc.id }}"><b>{{ doc.title }}</b></a>
+    <div class="muted">{{ doc.created_at.strftime('%d %b %Y') }}{% if job and not job.active %} &middot; the posting has closed{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:6px">
+    <a class="btn" href="/tailored/{{ doc.id }}">Open</a>
+    <a class="btn ghost" href="/tailored/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">.txt</a>
+  </div>
+</div>
+{% else %}
+<div class="card muted">No tailored résumés yet. Open a job and press <b>Tailor my résumé</b>.
+  {% if not has_resume %}<a href="/resume">Add your résumé</a> first.{% endif %}</div>
+{% endfor %}
+{% endblock %}

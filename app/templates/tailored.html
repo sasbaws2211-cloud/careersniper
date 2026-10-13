@@ -1,0 +1,106 @@
+{% extends "_tenant.html" %}
+{% block title %}{{ doc.title }} · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<p><a href="/tailored">&larr; All tailored résumés</a></p>
+<div class="hero"><h1>{{ doc.title }}</h1>
+  <div class="muted">Made {{ doc.created_at|ago }} from your saved résumé</div></div>
+
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if saved %}<div class="ok">Saved.</div>{% endif %}
+{% if fresh %}<div class="ok">Your tailored résumé is ready. Check the notes below before you use it.</div>{% endif %}
+
+{% if check.placeholders %}
+<div class="card" style="border-color:#fcd34d;background:#fffbeb;color:#1f2937">
+  <b>Fill in {{ check.placeholders|length }} thing{{ '' if check.placeholders|length == 1 else 's' }} before you send it.</b>
+  <p style="margin:6px 0">Where a fact only you know would make a line stronger, the text has a prompt in square brackets. Replace each one with the real
+    detail, or delete the line:</p>
+  <ul style="margin:0 0 0 18px">{% for p in check.placeholders %}<li>{{ p }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if corrected %}
+<div class="card" style="border-color:#93c5fd;background:#eff6ff;color:#1f2937;font-size:0.92rem">
+  <b>We corrected {{ corrected|length }} statement{{ '' if corrected|length == 1 else 's' }} before showing you this.</b>
+  The first draft said things your résumé does not support, so a fact-check rewrote them to match what you actually wrote:
+  <ul style="margin:6px 0 0 18px">{% for c in corrected %}<li>&ldquo;{{ c }}&rdquo;</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if audit %}
+<div class="card" style="border-color:#f87171;background:#fef2f2;color:#1f2937">
+  <b>We could not find {{ 'this' if audit|length == 1 else 'these' }} in your résumé.</b>
+  <p style="margin:6px 0">A second reading compared this version with your saved résumé. If a line below is not true, change or delete it:</p>
+  <ul style="margin:0 0 0 18px">{% for a in audit %}<li><b>&ldquo;{{ a.text }}&rdquo;</b>{% if a.why %} <span class="muted">&mdash; {{ a.why }}</span>{% endif %}</li>{% endfor %}</ul>
+</div>
+{% elif audit_done and audit is not none %}
+<div class="card" style="border-color:#86efac;background:#f0fdf4;color:#1f2937;font-size:0.92rem">
+  A second reading compared this version with your saved résumé and found nothing it states that your résumé does not.
+</div>
+{% elif audit_done %}
+<div class="card" style="border-color:#fcd34d;background:#fffbeb;color:#1f2937;font-size:0.92rem">
+  The second fact-check could not run this time, so read every line against your own résumé before you use this.
+</div>
+{% endif %}
+
+{% if check.unsupported or check.dropped_years %}
+<div class="card" style="border-color:#f87171;background:#fef2f2;color:#1f2937">
+  <b>Check these before you send it.</b>
+  {% if check.unsupported %}
+    <p style="margin:6px 0">These appear in the version below but <b>not in your saved résumé</b>. If any is not true, delete it:</p>
+    <p style="margin:0"><b>{{ check.unsupported|join(' · ') }}</b></p>
+  {% endif %}
+  {% if check.dropped_years %}
+    <p style="margin:10px 0 0">Your saved résumé mentions {{ check.dropped_years|join(', ') }}, but this version does not. A job or qualification may have been cut: make sure
+      nothing important is missing.</p>
+  {% endif %}
+</div>
+{% else %}
+<div class="card" style="border-color:#86efac;background:#f0fdf4;color:#1f2937;font-size:0.92rem">
+  Every number, name and tool in this version also appears in your saved résumé. That is a useful check, not a guarantee: read it through once yourself.
+</div>
+{% endif %}
+
+<form method="post" action="/tailored/{{ doc.id }}" class="card">
+  <textarea id="content" name="content" rows="30" maxlength="{{ max_chars }}" required style="width:100%;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:0.9rem;line-height:1.45">{{ content }}</textarea>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <button type="submit">Save changes</button>
+    <button type="button" class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('content').value).then(()=>{this.textContent='Copied'})">Copy</button>
+    <a class="btn ghost" href="/tailored/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
+    <a class="btn ghost" href="/tailored/{{ doc.id }}/print" target="_blank" style="background:transparent;color:inherit;border:1px solid #94a3b8">Print / save as PDF</a>
+  </div>
+</form>
+
+{% if coverage %}
+<div class="card"><b>How this résumé answers what the job asks for</b>
+  <ul style="list-style:none;margin:8px 0 0;padding:0">
+    {% for c in coverage %}
+    <li style="margin:4px 0">
+      {% if c.status == 'shown' %}<span style="color:#15803d">&#10003;</span>{% elif c.status == 'partly' %}<span style="color:#b45309">&#126;</span>{% else %}<span style="color:#b91c1c">&#10007;</span>{% endif %}
+      <b>{{ c.need }}</b>{% if c.where %} <span class="muted">&mdash; {{ c.where }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <span class="muted" style="font-size:0.9rem">&#10003; shown in your résumé &middot; &#126; partly &middot; &#10007; not shown (listed below as a gap).</span>
+</div>
+{% endif %}
+{% if changes %}
+<div class="card"><b>What was changed</b>
+  <ul style="margin:6px 0 0">{% for c in changes %}<li>{{ c }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if gaps %}
+<div class="card" style="border-color:#fcd34d;background:#fffbeb;color:#1f2937"><b>The posting asks for these, and your résumé does not show them</b>
+  <ul style="margin:6px 0">{% for g in gaps %}<li>{{ g }}</li>{% endfor %}</ul>
+  <span class="muted" style="font-size:0.9rem">Add one only if it is true: put it in your <a href="/resume">saved résumé</a> and tailor again.</span></div>
+{% endif %}
+
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+  {% if job %}
+    <a class="btn ghost" href="/jobs/{{ job.id }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">View the job</a>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Write cover letter</a>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">Tailor again</a>
+  {% endif %}
+  <form method="post" action="/tailored/{{ doc.id }}/delete" style="margin:0" onsubmit="return confirm('Delete this tailored résumé?')">
+    <button class="ghost" type="submit">Delete</button>
+  </form>
+</div>
+{% endblock %}

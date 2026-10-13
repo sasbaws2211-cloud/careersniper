@@ -1,0 +1,5 @@
+{% extends "_tenant.html" %}{% block title %}Reset password · {{ org.name if org is defined and org else PLATFORM }}{% endblock %}{% block body %}
+<div class="card" style="max-width:420px;margin:40px auto"><h2>Reset your password</h2>
+<form method="post"><label>Email<input name="email" type="email" required autofocus></label><p><button>Send reset link</button></p></form>
+<p class="muted"><a href="/member/login">Back to sign in</a></p></div>
+{% endblock %}

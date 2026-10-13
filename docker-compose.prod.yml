@@ -1,0 +1,48 @@
+# Production stack: Postgres + the app + Caddy (automatic HTTPS). See PRODUCTION.md for the full walkthrough.
+#   cp .env.production.example .env.production   (fill in every value)
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+# Only Caddy publishes ports. The app and database are reachable only inside the compose network.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: careersniper
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      POSTGRES_DB: careersniper
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careersniper -d careersniper"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    env_file: .env.production
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://careersniper:${DB_PASSWORD}@db:5432/careersniper
+    expose: ["8000"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN:?set BASE_DOMAIN}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

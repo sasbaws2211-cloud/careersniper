@@ -1,0 +1,102 @@
+{% extends "_tenant.html" %}
+{% block title %}Application tracker · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+  .tabs a { border: 1px solid var(--line, #cbd5e1); border-radius: 999px; padding: 5px 14px; text-decoration: none; color: inherit; font-size: 0.9rem; }
+  .tabs a.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .col h2 { font-size: 1.05rem; margin: 26px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .app { display: flex; flex-direction: column; gap: 8px; }
+  .app .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .app form.inline { display: flex; gap: 6px; margin: 0; align-items: center; }
+  .app textarea { width: 100%; min-height: 80px; box-sizing: border-box; }
+  .closed { color: #92400e; font-size: 12px; }
+  .note { white-space: pre-wrap; font-size: 0.9rem; color: #374151; }
+  details.add { margin: 12px 0 8px; }
+  details.add summary { cursor: pointer; font-weight: 600; }
+  details.add .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  details.add .grid .wide { grid-column: 1 / -1; }
+  @media (max-width: 640px) { details.add .grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="hero"><h1>Application tracker</h1>
+  <div class="muted">{{ total }} application{{ '' if total == 1 else 's' }} &middot; keep every job you are chasing in one place</div></div>
+
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+
+{% set sent = counts['applied'] + counts['interviewing'] + counts['offer'] + counts['rejected'] %}
+{% if sent %}
+<div class="card" style="padding:10px 14px">
+  <b>Your funnel:</b> {{ sent }} applied
+  &rarr; {{ counts['interviewing'] + counts['offer'] }} interview{{ '' if counts['interviewing'] + counts['offer'] == 1 else 's' }}
+  ({{ ((counts['interviewing'] + counts['offer']) * 100 / sent)|round|int }}%)
+  &rarr; {{ counts['offer'] }} offer{{ '' if counts['offer'] == 1 else 's' }}
+</div>
+{% endif %}
+
+<div class="tabs">
+  <a href="/tracker" class="{{ 'on' if status == 'all' }}">All ({{ total }})</a>
+  {% for s, label in labels.items() %}<a href="/tracker?status={{ s }}" class="{{ 'on' if status == s }}">{{ label }} ({{ counts[s] }})</a>{% endfor %}
+</div>
+
+<details class="add card">
+  <summary>+ Add a job you found somewhere else</summary>
+  <form method="post" action="/tracker/add" class="grid">
+    <label>Company<input name="company" required maxlength="200" placeholder="Acme Inc."></label>
+    <label>Job title<input name="title" required maxlength="300" placeholder="Backend Engineer"></label>
+    <label>Link to the posting <span class="muted">(optional)</span><input name="url" type="url" maxlength="1000" placeholder="https://..."></label>
+    <label>Status
+      <select name="status">{% for s, label in labels.items() %}<option value="{{ s }}" {{ 'selected' if s == 'applied' }}>{{ label }}</option>{% endfor %}</select>
+    </label>
+    <label class="wide">Notes <span class="muted">(optional)</span><textarea name="notes" maxlength="5000" placeholder="Contact, salary, what to follow up on"></textarea></label>
+    <div class="wide"><button type="submit">Add to tracker</button></div>
+  </form>
+</details>
+
+{% if total == 0 %}
+<div class="card muted">
+  Nothing tracked yet. Open any job and press <b>Track this job</b>, or add one above.
+  <p><a class="btn" href="/jobs">Browse jobs</a></p>
+</div>
+{% endif %}
+
+{% for s, label, items in columns %}
+{% if items or status != 'all' %}
+<section class="col">
+  <h2>{{ label }} <span class="tag">{{ items|length }}</span></h2>
+  {% for a, job in items %}
+  <div class="card app">
+    <div class="row">
+      <div>
+        {% if job and job.active %}<a href="/jobs/{{ job.id }}"><b>{{ a.title }}</b></a>{% else %}<b>{{ a.title }}</b>{% endif %}
+        <div class="muted">{{ a.company }}
+          {% if a.applied_on %} &middot; applied {{ a.applied_on.strftime('%d %b %Y') }}{% endif %}
+          &middot; updated {{ a.updated_at|ago }}</div>
+        {% if a.job_id and (not job or not job.active) %}<div class="closed">This posting has been taken down by the employer.</div>{% endif %}
+        {% if a.url %}<a href="{{ a.url }}" rel="nofollow noopener" target="_blank" style="font-size:0.9rem">Open the posting &#8599;</a>{% endif %}
+      </div>
+      <form class="inline" method="post" action="/tracker/{{ a.id }}/status">
+        <input type="hidden" name="status_filter" value="{{ status }}">
+        <select name="status" aria-label="Move to">{% for k, lab in labels.items() %}<option value="{{ k }}" {{ 'selected' if k == a.status }}>{{ lab }}</option>{% endfor %}</select>
+        <button class="ghost" type="submit">Move</button>
+      </form>
+    </div>
+    {% if a.notes %}<div class="note">{{ a.notes }}</div>{% endif %}
+    <details>
+      <summary class="muted" style="cursor:pointer">Edit notes</summary>
+      <form method="post" action="/tracker/{{ a.id }}/notes" style="margin-top:8px">
+        <textarea name="notes" maxlength="5000">{{ a.notes }}</textarea>
+        <button class="ghost" type="submit" style="margin-top:6px">Save notes</button>
+      </form>
+    </details>
+    <form method="post" action="/tracker/{{ a.id }}/delete" style="margin:0" onsubmit="return confirm('Remove this application from your tracker?')">
+      <button class="ghost" type="submit" style="padding:3px 10px;font-size:0.85rem">Remove</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="card muted">Nothing here.</div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endfor %}
+{% endblock %}

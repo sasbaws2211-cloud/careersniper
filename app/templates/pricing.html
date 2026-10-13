@@ -1,0 +1,168 @@
+{% extends "_plain.html" %}
+{% block title %}Pricing — {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  .band { background: #2563eb; color: #fff; width: 100vw; margin: 0 calc(50% - 50vw) 36px; padding: 8px 0 30px; }
+  .band .hero { text-align: center; padding: 36px 16px 4px; max-width: 760px; margin: 0 auto; }
+  .hero h1 { font-size: 2.2rem; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.03em; color: #fff; }
+  .hero .sub { font-size: 1.1rem; color: #e0ecff; margin: 0 auto 14px; max-width: 36em; }
+  .section.wide { max-width: 1040px; }
+  .included { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 8px 0 8px; text-align: left; }
+  .included div { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .included b { display: block; margin-bottom: 3px; color: #1d4ed8; }
+  .included span { color: #475569; font-size: .92rem; }
+  @media (max-width: 720px) { .included { grid-template-columns: 1fr; } }
+  .back-cta { text-align: center; margin: 0 0 48px; }
+  .counter { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 4px 0 18px; padding: 8px 16px;
+             border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .14); color: #fff; border-radius: 999px; font-size: 0.95rem; }
+  .counter b { font-weight: 700; }
+  .curpick { text-align: center; font-size: 0.9rem; margin: 6px 0 14px; }
+  .curpick a { margin: 0 5px; }
+  .curpick a.on { font-weight: 700; text-decoration: none; color: inherit; }
+  .local { font-size: 0.9rem; color: #6b7280; margin-top: 2px; }
+  .guarantee { font-size: 0.9rem; color: #166534; text-align: center; margin: -4px 0 14px; }
+  .guarantee a { color: inherit; }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; max-width: 1000px; margin: 24px auto 48px; }
+  @media (max-width: 800px) { .plans { grid-template-columns: 1fr; } }
+  .plan { position: relative; border: 2px solid #93c5fd; border-radius: 14px; padding: 26px 22px; text-align: center;
+          background: #fff; color: #0f172a; box-shadow: 0 6px 18px rgba(37, 99, 235, .10); }
+  .plan h3 { margin: 0 0 4px; color: #0f172a; font-size: 1.15rem; }
+  .plan .price { font-size: 2.2rem; font-weight: 800; margin: 8px 0; color: #0f172a; }
+  .plan .price span { font-size: 0.95rem; font-weight: 500; color: #475569; }
+  .plan .ghs, .plan .local, .plan .muted { font-size: 0.9rem; color: #334155; }
+  .plan ul { text-align: left; margin: 16px 0; padding-left: 1.1em; color: #1e293b; line-height: 1.6; }
+  .plan .btn { display: block; background: #2563eb; color: #fff; font-weight: 700; padding: 12px 16px; border-radius: 8px; text-decoration: none; }
+  .plan .btn:hover { background: #1d4ed8; }
+  .plan.featured { background: #2563eb; border-color: #1d4ed8; color: #fff;
+                   box-shadow: 0 14px 34px rgba(37, 99, 235, .35); transform: translateY(-8px); }
+  .plan.featured h3, .plan.featured .price, .plan.featured .price span, .plan.featured ul,
+  .plan.featured .ghs, .plan.featured .local, .plan.featured .muted { color: #fff; }
+  .plan.featured .btn { background: #fff; color: #1d4ed8; }
+  .plan.featured .btn:hover { background: #eff6ff; }
+  .plan .badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #1f2937;
+                 font-size: .75rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; }
+  @media (max-width: 800px) { .plan.featured { transform: none; } }
+  .section { max-width: 720px; margin: 0 auto 40px; padding: 0 16px; }
+  .section h2 { text-align: center; margin-bottom: 8px; }
+  .muted-center { text-align: center; color: #6b7280; margin-bottom: 20px; }
+  .faq details { border-bottom: 1px solid #cbd5e1; padding: 12px 0; }
+  .faq summary { cursor: pointer; font-weight: 600; }
+</style>
+
+<div class="band">
+  <div class="hero">
+    <h1>Pricing that pays for itself</h1>
+    <p class="sub">Preview the jobs free, then unlock full search, filters and alerts when you are ready. No contracts, and a {{ REFUND_DAYS }}-day money-back promise.</p>
+    {% if stats %}
+    <div class="counter" aria-label="Live job counts">
+      <span><b>{{ '{:,}'.format(stats.jobs) }}</b> open jobs</span>
+      <span><b>{{ '{:,}'.format(stats.companies) }}</b> companies</span>
+      {% if stats.updated %}<span>updated {{ stats.updated }}</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section wide">
+  <h2>Simple pricing</h2>
+  <p class="muted-center">Preview free. Unlock full search when you’re ready. Pay by card from anywhere in the world (USD shown; the amount charged is under each plan).</p>
+  <p class="curpick">Prices in:
+    {% for code, spec in currencies.items() %}<a href="/pricing?cur={{ code }}" class="{{ 'on' if code == cur }}" title="{{ spec.name }}">{{ code }}</a>{% endfor %}
+    <br><span class="muted" style="font-size:0.85rem">Other currencies shown are estimates.</span></p>
+  <p class="guarantee">
+    <b>{{ REFUND_DAYS }}-day money-back promise.</b> Not what you hoped for? Email us within {{ REFUND_DAYS }} days of paying and we refund you in full, no questions asked. <a href="/refunds">Details</a>
+  </p>
+  <div class="plans">
+    <div class="plan">
+      <h3>3-day pass</h3>
+      <div class="price">$3 <span>once</span></div>
+      <div class="ghs">{{ CONSUMER_PLANS.pass.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
+      {% if approx(3, cur) %}<div class="local">{{ approx(3, cur) }}</div>{% endif %}
+      <p class="muted">Try everything, no renewal</p>
+      <ul>
+        <li>Full search &amp; filters</li>
+        <li>Direct apply links</li>
+        <li>Never auto-renews</li>
+      </ul>
+      <a class="btn" href="/checkout?plan=pass">Get the pass</a>
+    </div>
+    <div class="plan">
+      <h3>Weekly</h3>
+      <div class="price">$7 <span>/ week</span></div>
+      <div class="ghs">{{ CONSUMER_PLANS.weekly.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
+      {% if approx(7, cur) %}<div class="local">{{ approx(7, cur) }}</div>{% endif %}
+      <ul>
+        <li>Full search &amp; filters</li>
+        <li>Direct apply links</li>
+        <li>Like / dislike ranking</li>
+        <li>Email job alerts</li>
+      </ul>
+      <a class="btn" href="/checkout?plan=weekly">Get Weekly</a>
+    </div>
+    <div class="plan featured">
+      <span class="badge">Most popular</span>
+      <h3>Monthly</h3>
+      <div class="price">$20 <span>/ month</span></div>
+      <div class="ghs">{{ CONSUMER_PLANS.monthly.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
+      {% if approx(20, cur) %}<div class="local">{{ approx(20, cur) }}</div>{% endif %}
+      <p class="muted">Best for an active search</p>
+      <ul>
+        <li>Everything in Weekly</li>
+        <li>Best value vs weekly</li>
+        <li>Cancel anytime</li>
+      </ul>
+      <a class="btn" href="/checkout?plan=monthly">Get Monthly</a>
+    </div>
+    <div class="plan">
+      <h3>Lifetime</h3>
+      <div class="price">$50 <span>once</span></div>
+      <div class="ghs">{{ CONSUMER_PLANS.lifetime.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
+      {% if approx(50, cur) %}<div class="local">{{ approx(50, cur) }}</div>{% endif %}
+      <ul>
+        <li>Pay once, keep access</li>
+        <li>Full search forever</li>
+        <li>Alerts included</li>
+      </ul>
+      <a class="btn" href="/checkout?plan=lifetime">Get Lifetime</a>
+    </div>
+  </div>
+</div>
+
+<div class="section wide">
+  <h2>Every plan includes</h2>
+  <div class="included">
+    <div><b>Full job search</b><span>Every live role, not a 15-job preview.</span></div>
+    <div><b>All the filters</b><span>Country, level, pay, remote-from, visa sponsorship.</span></div>
+    <div><b>Direct apply links</b><span>Straight to the company's own career page.</span></div>
+    <div><b>Job alerts</b><span>Daily or weekly digests; hourly on a paid plan.</span></div>
+    <div><b>Application tracker</b><span>Keep every job you are chasing in one place.</span></div>
+    <div><b>AI tools</b><span>R&eacute;sum&eacute; fit check, tailored r&eacute;sum&eacute;s, cover letters and interview practice (100+ requests a day).</span></div>
+  </div>
+</div>
+
+<div class="section faq">
+  <h2>FAQ</h2>
+  <details>
+    <summary>What if it is not for me?</summary>
+    <p class="muted">Email {{ SUPPORT_EMAIL }} within {{ REFUND_DAYS }} days of any payment and we refund it in full, no questions asked. <a href="/refunds">Read the refund promise</a>.</p>
+  </details>
+  <details>
+    <summary>Do the plans renew automatically?</summary>
+    <p class="muted">Weekly and monthly plans renew until you cancel from your account page, and you keep access to the end of the period you paid for. The 3-day pass and Lifetime are one payment and never renew.</p>
+  </details>
+  <details>
+    <summary>Can I try before paying?</summary>
+    <p class="muted">Yes. Browse a free preview of live jobs, then unlock the full results when you subscribe.</p>
+  </details>
+  <details>
+    <summary>Which currency will I be charged in?</summary>
+    <p class="muted">Prices are shown in US dollars. The amount actually charged is shown under each plan and again at checkout; other currencies shown are estimates, and your bank may convert the final amount.</p>
+  </details>
+  <details>
+    <summary>What are job alerts?</summary>
+    <p class="muted">Save a search (title, remote, location, filters). After you confirm your email, we send a digest when new matching roles appear.</p>
+  </details>
+</div>
+
+<p class="back-cta"><a class="btn" href="/jobs">Browse the free preview</a></p>
+{% endblock %}

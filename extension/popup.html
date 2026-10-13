@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 14px/1.45 system-ui, sans-serif; width: 300px; margin: 0; padding: 14px; color: #111; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  label { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+  p { margin: 8px 0; color: #4b5563; font-size: 13px; }
+  a { color: #2563eb; }
+</style>
+</head>
+<body>
+  <h1>CareerSniper</h1>
+  <label><input type="checkbox" id="enabled"> Show the card on LinkedIn and Indeed job pages</label>
+  <p><b>What is sent:</b> only the job title, company and location of the job you are looking at, to <span id="server"></span>. No account, no cookies, no browsing history.</p>
+  <p><a id="site" target="_blank" rel="noopener noreferrer">Open CareerSniper</a></p>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

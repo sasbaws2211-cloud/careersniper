@@ -1,0 +1,17 @@
+{% extends "_plain.html" %}
+{% block title %}Stop the weekly emails · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div style="max-width:520px;margin:48px auto" class="card">
+  {% if done %}
+    <h1 style="margin-top:0">You are unsubscribed</h1>
+    <p>We will not send you the weekly "new roles at companies you follow" email any more. You still follow your companies, and you can turn the emails back on from <a href="/following">your following page</a>.</p>
+  {% elif valid %}
+    <h1 style="margin-top:0">Stop the weekly emails?</h1>
+    <p>You will stop getting the weekly email about new roles at companies you follow.</p>
+    <form method="post"><button type="submit">Yes, stop the emails</button></form>
+  {% else %}
+    <h1 style="margin-top:0">This link is not valid</h1>
+    <p>It may be incomplete. Sign in and use the switch on <a href="/following">your following page</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

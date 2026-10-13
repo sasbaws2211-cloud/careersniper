@@ -1,0 +1,13 @@
+.git
+.venv*
+__pycache__
+*.pyc
+*.db
+*.db.bak
+*.db.pre-pg.bak
+.env*
+tests
+tests_pg
+data/discovered.json
+data/crawled_tokens.json
+.pytest_cache

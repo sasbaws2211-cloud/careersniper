@@ -1,0 +1,33 @@
+{% extends "_tenant.html" %}
+{% block title %}Cover letter · {{ job.title }} · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<p><a href="/jobs/{{ job.id }}">&larr; Back to the job</a></p>
+<div class="hero"><h1>Cover letter</h1>
+  <div class="muted">{{ job.title }} &middot; {{ job.company.name }}</div></div>
+
+{% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}{% if need_resume %} <a href="/resume">Add my résumé</a>{% endif %}</div>{% endif %}
+
+{% if not ai_on %}
+  <div class="card muted">Cover letters are not available right now. Please check back soon.</div>
+{% else %}
+  {% if existing %}
+  <div class="card">You already wrote a letter for this job on {{ existing.created_at.strftime('%d %b %Y') }}.
+    <a href="/letters/{{ existing.id }}">Open it</a> or write a new one below.</div>
+  {% endif %}
+  <form method="post" action="/jobs/{{ job.id }}/cover-letter" class="card">
+    <label>Your name <span class="muted">(for the signature)</span>
+      <input name="name" value="{{ name }}" maxlength="80" placeholder="Jane Doe" style="width:100%;box-sizing:border-box"></label>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+      <label>Tone
+        <select name="tone">{% for k in tones %}<option value="{{ k }}" {{ 'selected' if k == tone }}>{{ k|capitalize }}</option>{% endfor %}</select></label>
+      <label>Length
+        <select name="length">{% for k, label in lengths.items() %}<option value="{{ k }}" {{ 'selected' if k == length }}>{{ k|capitalize }} ({{ label.replace('about ', '') }})</option>{% endfor %}</select></label>
+    </div>
+    <label style="display:block;margin-top:12px">Anything you want it to stress? <span class="muted">(optional)</span>
+      <textarea name="emphasis" rows="3" maxlength="500" style="width:100%;box-sizing:border-box" placeholder="e.g. I am relocating to Nairobi in March; mention my Django migration project">{{ emphasis }}</textarea></label>
+    <p class="muted" style="font-size:13px">Written from your <a href="/resume">résumé</a> and this posting. Uses AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left{% if credits.trial %} in your free trial{% else %} today{% endif %}).
+      You can edit the result before you use it.</p>
+    <button type="submit">Write my cover letter</button>
+  </form>
+{% endif %}
+{% endblock %}

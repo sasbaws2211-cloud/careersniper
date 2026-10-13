@@ -1,0 +1,30 @@
+{# Expects: ats (string, lowercased). Renders a small SVG mark + label. #}
+{% set a = (ats or '')|lower %}
+<span class="ats-badge ats-{{ a }}" title="Sourced from {{ a or 'company' }} careers board">
+  <span class="ats-logo" aria-hidden="true">
+  {% if a == 'greenhouse' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="#00A36C"/><path d="M5 9.5c1.2 1.4 4.8 1.4 6 0" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="6" cy="6.5" r="1" fill="#fff"/><circle cx="10" cy="6.5" r="1" fill="#fff"/></svg>
+  {% elif a == 'lever' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#1A73E8"/><path d="M4 4h2.2v8H4V4zm3.2 3.2H12V9H7.2V7.2z" fill="#fff"/></svg>
+  {% elif a == 'ashby' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#7C3AED"/><path d="M3.5 12L8 3.5 12.5 12h-2.1L8 7.2 5.6 12H3.5z" fill="#fff"/></svg>
+  {% elif a == 'workday' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#F5681D"/><path d="M3 11.5c2-4 8-4 10 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="8" cy="6" r="2" fill="#fff"/></svg>
+  {% elif a == 'smartrecruiters' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#00A3A1"/><path d="M4 8.5l2.2 2.2L12 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  {% elif a == 'workable' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#E11D48"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><path d="M4 12c1.2-2 6.8-2 8 0" stroke="#fff" stroke-width="1.4" fill="none"/></svg>
+  {% elif a == 'recruitee' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#3F51B5"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">R</text></svg>
+  {% elif a == 'teamtailor' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#0F172A"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">T</text></svg>
+  {% elif a == 'personio' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#1D4ED8"/><text x="8" y="11.5" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">P</text></svg>
+  {% elif a == 'bamboohr' %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#73C41D"/><text x="8" y="11.5" text-anchor="middle" font-size="8" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">B</text></svg>
+  {% else %}
+    <svg viewBox="0 0 16 16" width="14" height="14"><rect width="16" height="16" rx="3" fill="#6B7280"/><circle cx="8" cy="8" r="3" fill="#fff"/></svg>
+  {% endif %}
+  </span>
+  <span class="ats-name">{{ a or 'board' }}</span>
+</span>

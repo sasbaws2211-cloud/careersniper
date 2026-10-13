@@ -1,0 +1,39 @@
+{% extends "_tenant.html" %}
+{% block title %}Companies hiring now · {{ PLATFORM }}{% endblock %}
+{% block head %}<meta name="description" content="Companies with open roles on their own career pages, how many jobs each has open and how fast they hire.">{% endblock %}
+{% block body %}
+<div class="hero"><h1>Companies hiring now</h1>
+  <div class="muted">{{ '{:,}'.format(total) }} compan{{ 'y' if total == 1 else 'ies' }}{% if q %} matching &ldquo;{{ q }}&rdquo;{% endif %} with open roles</div></div>
+
+{% if lens_on %}
+<div class="card" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand)">
+  <span><b>Companies hiring for your profile</b> <span class="muted">{{ lens_offer.summary }}</span></span>
+  <a href="/companies?for=all">Show all companies</a>
+</div>
+{% elif lens_offer and for_all %}
+<div class="card muted" style="padding:10px 14px">Showing all companies. <a href="/companies">Show only companies hiring for your profile</a></div>
+{% endif %}
+
+<form class="search" method="get" action="/companies">
+  {% if for_all %}<input type="hidden" name="for" value="all">{% endif %}
+  <input name="q" value="{{ q }}" placeholder="Search companies" aria-label="Search companies">
+  <button type="submit">Search</button>
+</form>
+
+{% for r in rows %}
+<a class="card" href="/companies/{{ r.id }}-{{ r.slug }}" style="display:flex;justify-content:space-between;gap:12px;text-decoration:none;color:inherit;align-items:center">
+  <span style="display:flex;gap:12px;align-items:center"><span class="av" aria-hidden="true">{{ r.name[:1]|upper }}</span><b>{{ r.name }}</b></span>
+  <span class="muted">{% if r.match is defined %}{{ r.match }} role{{ '' if r.match == 1 else 's' }} fit you{% else %}{{ r.open }} open role{{ '' if r.open == 1 else 's' }}{% endif %}</span>
+</a>
+{% else %}
+<div class="card muted">No companies match that search.</div>
+{% endfor %}
+
+{% if pages > 1 %}
+<div class="pager">
+  {% if page > 1 %}<a class="btn" href="?page={{ page - 1 }}&q={{ q|urlencode }}{{ '&for=all' if for_all }}">&larr;</a>{% endif %}
+  <span class="muted">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a class="btn" href="?page={{ page + 1 }}&q={{ q|urlencode }}{{ '&for=all' if for_all }}">&rarr;</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

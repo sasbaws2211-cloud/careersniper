@@ -1,0 +1,152 @@
+{% extends "_tenant.html" %}
+{% block title %}{{ job.title }} · {{ job.company.name }}{% endblock %}
+{% block body %}
+{% set ats = (job.source or job.company.ats or '')|lower %}
+{% set initial = (job.company.name[:1] if job.company.name else '?')|upper %}
+{% if request.query_params.get('unlocked') and has_access %}
+<div class="card" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534"><b>You&rsquo;re in.</b> Everything is unlocked, including the apply link below.
+  <a href="/referrals">Invite a friend and get a free week &rarr;</a></div>
+{% endif %}
+<p><a href="/jobs">&larr; All jobs</a></p>
+<div class="card">
+  <div class="job-detail-head">
+    <div class="av" aria-hidden="true">{{ initial }}</div>
+    <div>
+      <h1 style="margin:0 0 6px;font-size:1.45rem">{{ job.title }}</h1>
+      <div class="muted">
+        <a href="{{ company_path }}">{{ job.company.name }}</a>
+        {% if job.location %} · {{ job.location }}{% endif %}
+        {% if job.employment_type %} · {{ job.employment_type }}{% endif %}
+      </div>
+      <div class="job-tags" style="margin-top:8px">
+        {% if ats %}{% with ats=ats %}{% include "_ats_icon.html" %}{% endwith %}{% endif %}
+        {% if job.remote %}<span class="tag">Remote</span>{% endif %}
+        {% if job.featured_until and job.featured_until > now %}<span class="tag">Featured</span>{% endif %}
+        {% if job.pay_max_usd and job.pay_max_usd > 0 %}{% set lo = job.pay_min_usd or job.pay_max_usd %}<span class="tag">≈ ${{ '{:,}'.format(lo) }}{% if lo != job.pay_max_usd %}–${{ '{:,}'.format(job.pay_max_usd) }}{% endif %} / yr</span>
+        {% elif job.salary_min or job.salary_max %}<span class="tag">{{ job.salary_currency }} {{ '{:,}'.format(job.salary_min or job.salary_max) }}{% if job.salary_min and job.salary_max %}–{{ '{:,}'.format(job.salary_max) }}{% endif %}</span>
+        {% else %}<span class="tag">No pay listed</span>{% endif %}
+        {% if (job.repost_count or 0) > 0 %}<span class="tag" title="This role was closed and then posted again. It may be a listing the company keeps open all the time.">Reposted {{ 'once' if job.repost_count == 1 else job.repost_count ~ ' times' }}</span>{% endif %}
+        <span class="muted" style="font-size:12px">{{ [(now - (job.posted_at or job.first_seen)).days, 0]|max }}d ago</span>
+        {% if job.last_seen %}<span style="font-size:12px;color:#15803d">✓ confirmed open {{ job.last_seen|ago }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="job-actions">
+    {% if has_access %}
+    <a class="btn" href="/go/{{ job.id }}" rel="nofollow">{{ 'Apply by email' if job.url.startswith('mailto:') else 'Apply on company site' }}</a>
+    {% else %}
+    <a class="btn" href="/checkout?plan=monthly&next=/jobs/{{ job.id }}" rel="nofollow">Unlock to apply</a>
+    {% endif %}
+    {% if signed_in and ai_on %}
+    <a class="btn ghost" href="/jobs/{{ job.id }}/prepare" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10024; Prepare my application</a>
+    {% endif %}
+    {% if signed_in and ai_on %}
+    <form method="post" action="/jobs/{{ job.id }}/interview" style="margin:0"><button class="ghost" type="submit">&#127908; Practice interview</button></form>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Tailor my résumé</a>
+    <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Write cover letter</a>
+    {% endif %}
+    {% if tracked %}
+    <a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; In your tracker: {{ tracker_labels[tracked] if tracked in tracker_labels else tracked }}</a>
+    {% elif signed_in %}
+    <form method="post" action="/jobs/{{ job.id }}/track" style="margin:0">
+      <button class="ghost" type="submit">+ Track this job</button>
+    </form>
+    {% else %}
+    <a class="btn ghost" href="/member/login?next=/jobs/{{ job.id }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">Sign in to track</a>
+    {% endif %}
+    <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
+      <input type="hidden" name="reaction" value="liked">
+      <input type="hidden" name="next" value="/jobs/{{ job.id }}">
+      <button class="ghost">👍 Like</button>
+    </form>
+    <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
+      <input type="hidden" name="reaction" value="disliked">
+      <input type="hidden" name="next" value="/jobs/{{ job.id }}">
+      <button class="ghost">👎 Dislike</button>
+    </form>
+  </div>
+
+
+  {% if signed_in and coach_resume is defined %}
+  <section id="coach" class="card" style="margin:0 0 16px">
+    <h2 style="margin-top:0;font-size:1.05rem">How your résumé fits this job</h2>
+    {% if request.query_params.get('coach') == 'upgrade' %}<div class="err">The résumé coach is part of a paid plan. <a href="/pricing">See plans</a></div>
+    {% elif request.query_params.get('coach') == 'confirm' %}<div class="err">Confirm your email to use the AI tools. Use the button at the top of the page to resend the link.</div>
+    {% elif request.query_params.get('coach') == 'limit' %}<div class="err">You have used today's AI requests. They reset at midnight UTC.</div>
+    {% elif request.query_params.get('coach') == 'error' %}<div class="err">The AI service could not answer just now. Please try again in a moment.</div>{% endif %}
+    {% if not coach_resume %}
+      <p class="muted" style="margin:0">Upload your résumé and we will tell you what to change to fit this job. <a href="/resume">Upload your résumé &rarr;</a></p>
+    {% elif coach %}
+      <p style="margin:0 0 10px">
+        {% if coach.score is not none %}<b style="font-size:1.3rem">{{ coach.score }}</b><span class="muted">/100 &middot; </span>{% endif %}
+        {% if coach.verdict %}<b>{{ {'strong': 'Strong fit', 'good': 'Good fit', 'partial': 'Partial fit', 'weak': 'Weak fit'}[coach.verdict] }}</b>{% endif %}
+        {% if coach.summary %}<span class="muted"> &mdash; {{ coach.summary }}</span>{% endif %}
+      </p>
+      {% if coach.already_shows %}<p style="margin:8px 0 2px"><b>Your résumé already shows</b></p>
+      <ul style="margin:0 0 8px 18px;padding:0">{% for x in coach.already_shows %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+      {% if coach.missing %}<p style="margin:8px 0 2px"><b>What the posting asks for that is not visible</b></p>
+      <ul style="margin:0 0 8px 18px;padding:0">{% for x in coach.missing %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+      {% if coach.edits %}<p style="margin:8px 0 2px"><b>Edits worth making</b></p>
+      <ol style="margin:0 0 8px 18px;padding:0">
+        {% for e in coach.edits %}<li>{% if e.where %}<b>{{ e.where }}:</b> {% endif %}{{ e.change }}{% if e.only_if_true %} <span class="tag warn">only if it is true</span>{% endif %}</li>{% endfor %}
+      </ol>{% endif %}
+      <p class="muted" style="font-size:13px;margin:8px 0 10px">An AI wrote this from your résumé and the posting. Only add what is true.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn" href="/jobs/{{ job.id }}/tailor">&#9998; Apply these edits: tailor my résumé</a>
+        <a class="btn ghost" href="/resume" style="background:transparent;color:inherit;border:1px solid #94a3b8">Update my résumé</a>
+      </div>
+    {% else %}
+      <p class="muted" style="margin:0 0 10px">See what your résumé already shows for this job, what is missing, and the edits worth making before you apply.
+        Uses {{ coach_cost }} AI request.
+        {% if coach_credits.trial %}This is part of your <b>free trial</b>: {{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} requests left, then a paid plan is needed.
+        {% else %}({{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} left today.){% endif %}</p>
+      <form method="post" action="/jobs/{{ job.id }}/coach" style="margin:0"><button type="submit">Check my résumé for this job</button></form>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if request.query_params.get('reported') %}<div class="ok">Thanks. We will hide this job once enough people confirm it is closed.</div>{% endif %}
+  {% if salary_path %}<p class="muted" style="margin:0 0 12px"><a href="{{ salary_path }}">What does this kind of role pay? &rarr;</a></p>{% endif %}
+
+  {% if others %}
+  <p class="muted" style="margin:0 0 12px">Also open in:
+    {% for i, l in others %}<a href="/jobs/{{ i }}">{{ l[:60] }}</a>{{ ', ' if not loop.last }}{% endfor %}
+  </p>
+  {% endif %}
+
+  {% if has_access %}
+  {% if reqs %}
+  <section class="reqs" aria-label="What the job asks for">
+    {% if reqs.summary %}<p class="reqs-sum">{{ reqs.summary }}</p>{% endif %}
+    <div class="reqs-grid">
+      {% if reqs.must_have %}<div><h3>Requirements</h3><ul>{% for x in reqs.must_have %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if reqs.nice_to_have %}<div><h3>Nice to have</h3><ul>{% for x in reqs.nice_to_have %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+      {% if reqs.responsibilities %}<div><h3>What you will do</h3><ul>{% for x in reqs.responsibilities %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+    </div>
+    {% if reqs.min_years is not none %}<p class="reqs-foot"><span class="tag">{{ reqs.min_years }}+ years of experience</span>{% if reqs.seniority %}<span class="tag">{{ reqs.seniority|title }}</span>{% endif %}</p>{% endif %}
+  </section>
+  {% endif %}
+  <h2 class="desc-title">About this job</h2>
+  <div class="desc rich">{{ job.description|rich(6000) }}</div>
+  {% if signed_in %}
+  <form method="post" action="/jobs/{{ job.id }}/report-closed" style="margin:12px 0 0">
+    <button class="ghost" type="submit" style="font-size:.85rem">Already closed? Report this listing</button>
+  </form>
+  {% endif %}
+  {% else %}
+  <h2 class="desc-title">About this job</h2>
+  <div class="desc rich preview">{{ job.description|rich(preview_chars) }}</div>
+  <div class="card" style="margin-top:16px;text-align:center">
+    <strong>Unlock the full description and the apply link</strong>
+    <p class="muted" style="margin:6px 0 12px">Every job, every filter, alerts and the AI tools. {{ REFUND_DAYS }}-day money-back promise.</p>
+    <a class="btn" href="/checkout?plan=monthly&next=/jobs/{{ job.id }}" style="background:#111;font-size:1.05rem;padding:12px 22px">Get Monthly &mdash; $20 <span style="font-size:.75rem;opacity:.8">&middot; most popular</span></a>
+    <p class="muted" style="margin:12px 0 0;font-size:.9rem">
+      Just trying it? <a href="/checkout?plan=pass&next=/jobs/{{ job.id }}">3 days &mdash; $3</a> &middot;
+      <a href="/checkout?plan=weekly&next=/jobs/{{ job.id }}">Weekly &mdash; $7</a> &middot;
+      <a href="/checkout?plan=lifetime&next=/jobs/{{ job.id }}">Lifetime &mdash; $50</a>
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

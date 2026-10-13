@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block content %}
+<h1>Referrals</h1>
+<form method="get" class="filters">
+  <select name="status" aria-label="Status"><option value="">All</option>{% for s in ['signed_up','rewarded','withdrawn','capped','skipped'] %}<option value="{{ s }}" {{ 'selected' if status == s }}>{{ s|replace('_',' ') }}</option>{% endfor %}</select>
+  <button type="submit">Filter</button>
+</form>
+<div class="card flush"><table>
+  <thead><tr><th>When</th><th>Inviter</th><th>Friend</th><th>Status</th><th>Reward</th><th></th></tr></thead>
+  {% for x in rows %}{% set r = x.r %}
+  <tr><td class="muted">{{ r.created_at|dt('%d %b %Y') }}</td><td><a href="/members/{{ r.referrer_id }}">{{ x.referrer }}</a></td><td><a href="/members/{{ r.referred_id }}">{{ x.referred }}</a></td>
+    <td><span class="tag {{ 'ok' if r.status == 'rewarded' else ('err' if r.status == 'withdrawn' else '') }}">{{ r.status|replace('_',' ') }}</span></td>
+    <td>{{ r.reward_days }} days</td>
+    <td class="actions">{% if r.status == 'rewarded' %}<form method="post" action="/referrals/{{ r.id }}/withdraw" data-confirm="Take back the free week this referral earned?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small" type="submit">Withdraw</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">No referrals.</td></tr>{% endfor %}</table></div>
+{{ pager(page, pages, total, {'status': status}) }}
+{% endblock %}

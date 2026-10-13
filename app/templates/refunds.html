@@ -1,0 +1,21 @@
+{% extends "_plain.html" %}
+{% block title %}{{ REFUND_DAYS }}-day money-back promise · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div style="max-width:680px;margin:40px auto;line-height:1.6">
+  <h1>{{ REFUND_DAYS }}-day money-back promise</h1>
+  <p>If {{ PLATFORM }} is not useful to you, we will give your money back. No forms, no reasons needed.</p>
+  <h2 style="font-size:1.1rem">How it works</h2>
+  <ul>
+    <li>Applies to every plan (the 3-day pass, Weekly, Monthly and Lifetime) and to every payment, including a renewal.</li>
+    <li>Email <a href="mailto:{{ SUPPORT_EMAIL }}">{{ SUPPORT_EMAIL }}</a> within <b>{{ REFUND_DAYS }} days</b> of the payment, from the address you paid with.</li>
+    <li>We refund the full amount to the card or account you paid with, normally within 5 business days. Your bank may take a few more days to show it.</li>
+    <li>Your paid access ends when the refund is issued, and a recurring plan is cancelled so you are not charged again.</li>
+  </ul>
+  <h2 style="font-size:1.1rem">Good to know</h2>
+  <ul>
+    <li>A refund goes back to the card you paid with, in the currency it was charged in, so the dollar amount can differ slightly if the exchange rate moved.</li>
+    <li>To stop a Weekly or Monthly plan from renewing without a refund, cancel it any time from your <a href="/account">account</a>; access continues until the period you paid for ends.</li>
+  </ul>
+  <p><a class="btn" href="/pricing">See plans</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+# CareerSniper — B2C job search (CareerHound-style)
+
+Find jobs posted on company career pages — the openings that often never appear on LinkedIn or Indeed.
+
+Jobs are scraped from public ATS boards (Greenhouse, Lever, Ashby, …) into one shared pool. Job seekers get a free preview, then unlock the full database with a simple subscription.
+
+## Pricing (consumer)
+
+| Plan     | Price   | Access                          |
+|----------|---------|---------------------------------|
+| Weekly   | $7      | Full access for 7 days          |
+| Monthly  | $20     | Full access for 30 days         |
+| Lifetime | $50     | One-time, lifetime access       |
+
+Free preview shows a limited number of matching jobs. Full search, filters, alerts, saved jobs, and AI tools require an active plan.
+
+## Run locally
+
+PostgreSQL is the only supported database. Tables are SQLModel classes (`app/models.py`), the app talks to the database through an
+async engine (asyncpg), and the schema is managed with Alembic.
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env              # set DATABASE_URL to your PostgreSQL database (postgresql+asyncpg://user:pw@host/db)
+alembic upgrade head              # create / update the tables
+python -m app.cli scrape          # seeds employers and pulls jobs
+uvicorn app.main:app --port 8020
+```
+
+Changing a table: edit `app/models.py`, run `alembic revision --autogenerate -m "what changed"`, read the generated file, then `alembic upgrade head`.
+Moving data from the old SQLite file: `python -m app.cli migrate sqlite:///./careersniper.db postgresql://user:pw@host/db` (the target must already be migrated).
+
+- Marketing homepage: http://localhost:8020/
+- Job search (preview): http://localhost:8020/jobs
+- Pricing: http://localhost:8020/pricing
+
+## What changed (B2C pivot)
+
+- Multi-tenant white-label (orgs / subdomains) removed (the schema history now starts at `0001_baseline`).
+- Single global job feed and member accounts.
+- CareerHound-style marketing homepage and hard paywall with free preview.
+- Consumer plans: weekly / monthly / lifetime.
+- Employer direct-posting and org admin remain in the codebase as secondary / legacy paths; the primary product is the B2C job seeker experience.
+
+## Config (env)
+
+`DATABASE_URL`, `SECRET_KEY`, `PUBLIC_URL`, `PAYSTACK_SECRET_KEY` / `PAYSTACK_SECRET_KEY (webhook sig)` (billing), `ANTHROPIC_API_KEY` (AI tools), SMTP settings for email.
+
+See [PRODUCTION.md](PRODUCTION.md) for deploy notes.
+
+## Tests
+
+```bash
+python -m pytest tests -q
+```
+
+The suite runs on a separate PostgreSQL database named `<your database>_test` (created on first run, on the same server as `DATABASE_URL`;
+set `TEST_DATABASE_URL` to use another). It drops and recreates every table, so it refuses to use a name that does not end in `_test`.
+
+
+### Checkout & webhooks
+
+Consumer billing is wired to Paystack:
+
+| Route | Purpose |
+|-------|---------|
+| `GET /checkout?plan=weekly\|monthly\|lifetime` | Plan selection + email form |
+| `POST /checkout` | Creates Paystack hosted checkout (`bw_*` tx_ref) |
+| `POST /checkout/session` | JSON: starts a checkout for the in-page Paystack popup (`reference`, `access_code`) |
+| `GET /checkout/status?reference=` | Polled by the checkout page: verifies with Paystack and applies the payment (works without a webhook, e.g. on localhost) |
+| `GET /billing/return` | Browser return; re-verifies transaction (the redirect-flow fallback) |
+| `POST /webhooks/paystack` | `charge.completed` (initial + renewals) and `subscription.cancelled` |
+| `POST /account/billing/cancel` | Cancel recurring; access until period end |
+
+Prices are quoted in **USD** with a smaller **GHS** amount underneath (rate: `USD_TO_GHS`, default 15.50). Charges are collected in GHS via Paystack.\n\nSet `PAYSTACK_SECRET_KEY` and `PAYSTACK_SECRET_KEY (webhook sig)`. Without them, `BILLING_ENABLED` is false and `/checkout` grants access in dev when `SECRET_KEY` is the default.
+
+Access control: `_member_has_access` uses `billing.has_active_access(email)` when billing is on.
+
+### Résumé upload, the filtered board and the résumé coach
+
+| Piece | What it does |
+|-------|--------------|
+| `POST /resume/upload` | PDF, Word `.docx` or text file (2 MB max). Only the text is kept, never the file. Saving also reads the member's job titles, level and skills **for free** (not deducted from the daily token budget; logged as `free:match_profile`). |
+| `/jobs`, `/companies` | A member with a résumé sees jobs that fit it by default (title words and level, no AI call per page view). `?for=all` shows everything; a specific search (`q`) pauses it. |
+| `POST /resume/profile/edit` | The member can correct the job titles and level that were read. |
+| `POST /jobs/{id}/tailor` | Full résumé rewrite for one job: the posting is analysed first (cached per job, free), the writer must quote proof for each requirement, then the rewrite is fact-checked against the original and corrected. Unprovable claims become `[ADD: ...]` prompts or gaps. |
+| `POST /jobs/{id}/coach` | Résumé coach for one job: what the résumé shows, what is missing, specific edits (claim-adding edits are marked "only if true"). Uses AI tokens the first time and is remembered per résumé until the text changes. Tailor résumé stays as the optional "apply these edits" step. |
+
+### Data quality
+
+```bash
+python -m app.cli scrape          # seed registry (if empty) + scrape all active employers
+python -m app.cli data-health     # employers, errors, job counts, stale stats
+python -m app.cli prune-dead      # deactivate hard-404 boards with zero jobs
+python -m app.cli verify          # spot-check board tokens vs live pages
+python -m app.cli discover candidates data/candidates.txt
+```
+
+In-process scheduler (`ENABLE_SCHEDULER=1`) runs `scrape_all` every `SCRAPE_INTERVAL_HOURS` (default 6).
+
+Freshness:
+- `JOB_STALE_DAYS` (30): jobs not seen on a board for this long are deactivated
+- `DEFAULT_MAX_JOB_AGE_DAYS` (90): feed hides older postings by `posted_at` / `first_seen`
+- `CLOSE_GRACE_HOURS` (12): wait before treating a missing listing as closed
+
+Dedupe: same title+description within a company shares a `dup_key`; search shows one card with “+N locations”.
+
+### Member flow (access, paying, onboarding)
+
+- **First-time onboarding.** After signup, new members land on `/onboarding` (situation, desired title, level, salary range, location, biggest frustration). Primary CTA goes to `/pricing?from=onboarding`; secondary continues with free preview. Answers are stored in `member_profiles`.
+
+- **A plan belongs to a confirmed email.** `_member_has_access` needs `member.verified` as well as an active subscription, so signing up with
+  someone else's address never borrows their plan. A browser that completes a checkout is trusted for that address (`session["paid_email"]`),
+  so a guest who pays and then signs up with the same email is confirmed on the spot. Migration `0003` confirms members who already pay.
+- **Buying while paid up never loses time.** A lifetime holder cannot buy anything; a weekly/monthly bought on top of a live plan starts when the
+  live plan ends; `current_subscription` returns the row that lasts longest, not the newest.
+- **Pay and come back.** `GET /checkout?plan=…&next=/jobs/123` remembers the page; after payment the member lands there with `?unlocked=1`.
+  `/go/{id}` for a non-subscriber goes to checkout with the job remembered. A new signup starts on `/resume?welcome=1`.
+- **Apply fills the tracker.** `/go/{id}` adds (or advances) the job in the member's tracker as *applied*.
+- **Reports.** `POST /jobs/{id}/report-closed`: three confirmed members hide a listing (`jobs.status = 'closed'`, `app/reports.py`).
+- **Expiry reminders.** The scheduler (`app/reminders.py`) emails once, ~a day before a pass or cancelled plan ends.
+- **Alerts.** A signed-in confirmed member's alert for their own address needs no confirmation email; `POST /alerts/from-resume` makes one
+  daily alert per job title read from the résumé.
+- **Application checklist.** `GET /jobs/{id}/prepare` lists coach → tailor → letter → interview → apply with what is done and what each costs.

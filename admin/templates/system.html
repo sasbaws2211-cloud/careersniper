@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>System</h1>
+{% for p in admin_problems %}<div class="flash err">{{ p }}</div>{% endfor %}
+<div class="cols two">
+  <section class="card"><h2>Database</h2>
+    <table>
+      <tr><td>Type</td><td>{{ s.dialect }}</td></tr>
+      <tr><td>Schema revision</td><td><code>{{ s.revision or 'none' }}</code> {% if s.head and s.revision != s.head %}<span class="tag err">code expects {{ s.head }}</span>{% elif s.head %}<span class="tag ok">up to date</span>{% endif %}</td></tr>
+      {% for k, v in s.counts.items() %}<tr><td>{{ k|capitalize }}</td><td>{{ '{:,}'.format(v) }}</td></tr>{% endfor %}
+    </table></section>
+  <section class="card"><h2>Platform settings as this app sees them</h2>
+    <p class="muted small">These come from this admin app's own environment. If the public site runs with different settings, they will differ: set them the same.</p>
+    <table>
+      <tr><td>Public site</td><td>{{ s.site_url }}</td></tr>
+      <tr><td>Payments</td><td>{{ 'on' if s.billing_on else 'off' }} (charged in {{ s.currency }})</td></tr>
+      <tr><td>Refund promise</td><td>{{ s.refund_days }} days, support at {{ s.support }}</td></tr>
+      {% for p, usd in s.plans.items() %}<tr><td>Plan: {{ p }}</td><td>${{ usd }}</td></tr>{% endfor %}
+      <tr><td>This app</td><td>{{ admin_env }}</td></tr>
+    </table></section>
+</div>
+{% endblock %}

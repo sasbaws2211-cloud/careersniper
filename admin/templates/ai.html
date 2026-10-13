@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bars %}
+{% block content %}
+<h1>AI usage</h1>
+<div class="grid">
+  <div class="stat"><b>{{ '{:,}'.format(r.total_30d) }}</b><span>requests in 30 days</span></div>
+  <div class="stat"><b>{{ '{:,}'.format(r.tokens_30d) }}</b><span>tokens in 30 days</span><small>multiply by your provider's price per token for the cost</small></div>
+</div>
+<section class="card"><h2>Requests, 14 days</h2>{{ bars(r.series, 'AI requests') }}</section>
+<div class="cols two">
+  <section class="card flush"><h2 class="pad">By tool (30 days)</h2>
+    <table><thead><tr><th>Tool</th><th>Calls</th><th>Avg in</th><th>Avg out</th></tr></thead>
+    {% for tool, n, tin, tout in r.per_tool %}<tr><td>{{ tool }}</td><td>{{ n }}</td><td>{{ (tin / n)|round|int }}</td><td>{{ (tout / n)|round|int }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No AI calls yet.</td></tr>{% endfor %}</table></section>
+  <section class="card flush"><h2 class="pad">Heaviest users (7 days)</h2>
+    <table>{% for id, email, n in r.top %}<tr><td><a href="/members/{{ id }}">{{ email }}</a></td><td>{{ n }} requests</td></tr>{% else %}<tr><td class="muted">Nobody yet.</td></tr>{% endfor %}</table></section>
+</div>
+{% endblock %}

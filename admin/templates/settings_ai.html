@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}AI settings{% endblock %}
+{% block content %}
+{% set v = view %}
+{% set can = admin.is_owner %}
+{% set d = draft %}
+{% macro source(key, env_value) %}{% if v.stored.get(key) is not none %}<span class="tag ok">set here</span>{% elif env_value %}<span class="tag">from the server's environment</span>{% else %}<span class="tag">not set</span>{% endif %}{% endmacro %}
+<h1>AI settings</h1>
+<p class="muted">The AI provider, model, key and limits for the whole platform: job match, cover letters, tailored résumés and interview coaching all use these. A change reaches the public site within about {{ v.ttl }} seconds. No restart is needed.</p>
+
+<div class="flash {{ '' if v.on else 'err' }}" role="status">
+  {% if v.on %}<b>AI is on.</b> Using {{ v.effective.provider }} / {{ v.effective.model }}{% if v.effective.provider == 'openai_compatible' %} at {{ v.effective.base_url }}{% endif %}.
+  {% else %}<b>AI is off.</b> {{ v.why }} The AI buttons are hidden on the site until this is fixed.{% endif %}
+</div>
+{% if v.unreadable %}<div class="flash err" role="alert">The stored API key cannot be decrypted, so it is being ignored. The public site and this app must run with the same <code>SECRET_KEY</code> (or <code>SETTINGS_SECRET</code>). Enter the key again after fixing that.</div>{% endif %}
+{% if not can %}<p class="muted small">You can see these settings. Only an owner can change them.</p>{% endif %}
+
+<form method="post" action="/settings/ai" class="card stack" autocomplete="off">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if draft_token %}<input type="hidden" name="draft_token" value="{{ draft_token }}">{% endif %}
+
+  <label class="check"><input type="checkbox" name="enabled" value="on" {{ 'checked' if ((d.enabled == 'on') if d else v.enabled) }} {{ 'disabled' if not can }}> <b>AI features are on</b>
+    <span class="muted small">Untick to switch every AI feature off at once (the master switch).</span></label>
+
+  <h2>Provider</h2>
+  <div class="row">
+    <label>Provider {{ source('ai_provider', v.env.provider) }}
+      <select name="provider" {{ 'disabled' if not can }}>
+        <option value="">{{ 'Use the environment (' ~ v.env.provider ~ ')' if v.env.provider else 'Choose a provider' }}</option>
+        {% for p, l in [('anthropic', 'Anthropic (Claude)'), ('openai', 'OpenAI'), ('openai_compatible', 'Custom: any OpenAI-compatible server')] %}<option value="{{ p }}" {{ 'selected' if ((d.provider if d else v.stored.get('ai_provider', '')) == p) }}>{{ l }}</option>{% endfor %}
+      </select></label>
+    <label>Model {{ source('ai_model', v.env.model) }}
+      <input name="model" value="{{ d.model if d else v.stored.get('ai_model', '') }}" placeholder="{{ v.env.model or 'e.g. claude-sonnet-5-5, gpt-4.1-mini, llama3.1' }}" maxlength="120" {{ 'disabled' if not can }}></label>
+  </div>
+  <label>Base address <span class="muted small">(only for a custom server, or a gateway such as OpenRouter)</span> {{ source('ai_base_url', v.env.base_url) }}
+    <input name="base_url" value="{{ d.base_url if d else v.stored.get('ai_base_url', '') }}" placeholder="{{ v.env.base_url or 'https://openrouter.ai/api/v1   or   http://localhost:11434/v1' }}" maxlength="300" {{ 'disabled' if not can }}></label>
+  <p class="muted small">Plain <code>http://</code> is accepted only for this machine or a private network address. Anything on the internet must use <code>https://</code>, because every résumé is sent to this address.</p>
+
+  <label>API key
+    {% if v.key.stored %}<span class="tag ok">saved ({{ v.key.hint }})</span>{% elif v.key.env %}<span class="tag">from the server's environment</span>{% else %}<span class="tag">not set</span>{% endif %}
+    <input type="password" name="api_key" placeholder="{{ 'The key you typed is held for a few minutes: press Save to keep it' if draft_key else ('Leave blank to keep the saved key' if v.key.stored else 'Paste the key') }}" autocomplete="new-password" maxlength="400" {{ 'disabled' if not can }}></label>
+  <label class="check"><input type="checkbox" name="remove_key" value="on" {{ 'disabled' if not can or not v.key.stored }}> Remove the saved key
+    <span class="muted small">The key is stored encrypted and is never shown again. Custom local servers often need none.</span></label>
+
+  <h2>Limits</h2>
+  <div class="row">
+    <label>Free trial requests per member {{ source('ai_free_requests', v.env.free_trials) }}
+      <input name="free_trials" type="number" min="0" max="10000" step="1" value="{{ d.free_trials if d else v.stored.get('ai_free_requests', '') }}" placeholder="{{ v.env.free_trials }}" {{ 'disabled' if not can }}></label>
+    <label>Calls at once {{ source('ai_max_concurrency', v.env.max_concurrency) }}
+      <input name="max_concurrency" type="number" min="1" max="64" value="{{ d.max_concurrency if d else v.stored.get('ai_max_concurrency', '') }}" placeholder="{{ v.env.max_concurrency }}" {{ 'disabled' if not can }}></label>
+    <label>Longest answer (tokens) {{ source('ai_max_output_tokens', v.env.max_output_tokens) }}
+      <input name="max_output_tokens" type="number" min="100" max="8000" value="{{ d.max_output_tokens if d else v.stored.get('ai_max_output_tokens', '') }}" placeholder="{{ v.env.max_output_tokens }}" {{ 'disabled' if not can }}></label>
+    <label>Timeout (seconds) {{ source('ai_timeout', v.env.timeout) }}
+      <input name="timeout" type="number" min="5" max="300" step="1" value="{{ d.timeout if d else v.stored.get('ai_timeout', '') }}" placeholder="{{ v.env.timeout|int }}" {{ 'disabled' if not can }}></label>
+  </div>
+
+  <h2>AI requests per day, by plan</h2>
+  <p class="muted small">How many AI requests (one per call to the model) a member on each plan may make per day, resetting at midnight UTC. Every paid plan starts at 100; a lower number is not accepted. Blank uses the plan's default. Members without a plan get only the free trial requests above.</p>
+  <table>
+    <thead><tr><th>Plan</th><th>Price</th><th>Default</th><th>Per day</th></tr></thead>
+    {% for p in v.plans %}<tr><td>{{ p.plan }}</td><td>${{ p.price }}</td><td>{{ '{:,}'.format(p.default) }}</td>
+      <td><input name="daily_{{ p.plan }}" type="number" min="100" max="100000" step="10" value="{{ d['daily_' ~ p.plan] if d else (p.stored if p.stored is not none else '') }}" placeholder="{{ p.default }}" {{ 'disabled' if not can }}></td></tr>{% endfor %}
+  </table>
+
+  <details><summary><b>Advanced</b></summary>
+    <div class="row" style="margin-top:10px">
+      <label>Token setting {{ source('ai_token_param', v.env.token_param) }}
+        <select name="token_param" {{ 'disabled' if not can }}><option value="">Automatic (right for OpenAI and for most servers)</option>
+          {% for t in ['max_tokens', 'max_completion_tokens'] %}<option value="{{ t }}" {{ 'selected' if ((d.token_param if d else v.stored.get('ai_token_param', '')) == t) }}>{{ t }}</option>{% endfor %}</select></label>
+      <label>JSON mode {{ source('ai_json_mode', v.env.json_mode) }}
+        <select name="json_mode" {{ 'disabled' if not can }}><option value="">Use the environment ({{ 'on' if v.env.json_mode else 'off' }})</option>
+          <option value="1" {{ 'selected' if ((d.json_mode == '1') if d else v.stored.get('ai_json_mode') is true) }}>On</option><option value="0" {{ 'selected' if ((d.json_mode == '0') if d else v.stored.get('ai_json_mode') is false) }}>Off</option></select></label>
+    </div>
+    <p class="muted small">Change these only if every request fails with an error about the token setting or about the response format. See the real-model checklist.</p>
+  </details>
+
+  {% if can %}
+  <div class="row">
+    <button type="submit">Save settings</button>
+    <button type="submit" class="ghost" formaction="/settings/ai/test" title="Sends one tiny request using the values above, saved or not">Test these values</button>
+  </div>
+  <p class="muted small">“Test these values” sends one small real request to the provider (a few tokens) using what is in the form. It saves nothing.</p>
+  {% endif %}
+</form>
+
+{% if can %}
+<form method="post" action="/settings/ai/reset" class="card" data-confirm="Forget everything set here and go back to the server's environment variables?">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <b>Reset</b> <span class="muted small">Forget every AI setting stored here, including the saved key, and use the server's environment variables again.</span>
+  <div><button class="ghost" type="submit">Reset to the environment</button></div>
+</form>
+{% endif %}
+
+{% if v.last_change %}<p class="muted small">Last changed {{ v.last_change.updated_at|ago }} by {{ v.last_change.updated_by }}. Every change is in the <a href="/audit?action=ai">audit log</a> (the key itself is never logged).</p>{% endif %}
+{% endblock %}

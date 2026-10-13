@@ -1,0 +1,48 @@
+  {% set ats = (j.source or j.company.ats or '')|lower %}
+  {% set initial = (j.company.name[:1] if j.company.name else '?')|upper %}
+  <div class="jobwrap">
+    <div class="react">
+      <form method="post" action="/jobs/{{ j.id }}/react" style="margin:0">
+        <input type="hidden" name="reaction" value="liked">
+        <input type="hidden" name="next" value="{{ request.url.path }}{{ '?' ~ request.url.query if request.url.query }}">
+        <button type="submit" title="Like" aria-label="Like"
+          class="ghost {{ 'on' if reactions is defined and reactions.get(j.id) == 'liked' }}">👍</button>
+      </form>
+      <form method="post" action="/jobs/{{ j.id }}/react" style="margin:0">
+        <input type="hidden" name="reaction" value="disliked">
+        <input type="hidden" name="next" value="{{ request.url.path }}{{ '?' ~ request.url.query if request.url.query }}">
+        <button type="submit" title="Dislike" aria-label="Dislike"
+          class="ghost {{ 'on' if reactions is defined and reactions.get(j.id) == 'disliked' }}">👎</button>
+      </form>
+    </div>
+    <a class="job" href="/jobs/{{ j.id }}">
+      <div class="job-top">
+        <div class="av" aria-hidden="true">{{ initial }}</div>
+        <div class="job-main">
+          <h3>{{ j.title }}{% if j.featured_until and j.featured_until > now %} <span class="tag">Featured</span>{% endif %}</h3>
+          {% set locs = sib.get(j.dup_key, []) %}
+          <div class="job-meta">
+            {{ j.company.name }}{% if j.location %} · {{ j.location[:80] }}{% endif %}
+            {% if locs|length > 1 %} · <span title="{{ locs|map(attribute=1)|join('; ') }}">+{{ locs|length - 1 }} more location{{ '' if locs|length == 2 else 's' }}</span>{% endif %}
+          </div>
+          <div class="job-tags">
+            {% if ats %}
+            {% with ats=ats %}{% include "_ats_icon.html" %}{% endwith %}
+            {% endif %}
+            {% if j.remote %}<span class="tag">Remote</span>{% endif %}
+            {% if why is defined and why.get(j.id) %}<span class="tag" title="Matched the job title read from your résumé" style="background:#ede9fe;color:#5b21b6">Fits: {{ why[j.id] }}</span>{% endif %}
+            {% if j.department %}<span class="tag">{{ j.department[:40] }}</span>{% endif %}
+            {% if j.pay_max_usd and j.pay_max_usd > 0 %}
+              {% set lo = j.pay_min_usd or j.pay_max_usd %}
+              <span class="tag" title="Converted to approximate US dollars a year">≈ ${{ '{:,}'.format(lo) }}{% if lo != j.pay_max_usd %}–${{ '{:,}'.format(j.pay_max_usd) }}{% endif %} / yr</span>
+            {% elif j.salary_min or j.salary_max %}
+              <span class="tag">{{ j.salary_currency }} {{ '{:,}'.format(j.salary_min or j.salary_max) }}{% if j.salary_min and j.salary_max %}–{{ '{:,}'.format(j.salary_max) }}{% endif %}</span>
+            {% else %}<span class="tag nopay">No pay listed</span>{% endif %}
+            {% if (j.repost_count or 0) > 0 %}<span class="tag warn" title="This role was closed and then posted again. It may be a listing the company keeps open all the time.">Reposted {{ 'once' if j.repost_count == 1 else j.repost_count ~ ' times' }}</span>{% endif %}
+            <span class="muted">{{ [(now - (j.posted_at or j.first_seen)).days, 0]|max }}d ago</span>
+            {% if j.last_seen %}<span class="open-as-of" title="We last saw this posting on the employer's own careers page at this time">✓ confirmed open {{ j.last_seen|ago }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>

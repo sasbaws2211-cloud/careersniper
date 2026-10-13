@@ -1,0 +1,4 @@
+{% extends "_tenant.html" %}{% block title %}Unsubscribe · {{ org.name }}{% endblock %}{% block body %}
+<div class="card" style="max-width:480px;margin:40px auto"><h2>Unsubscribe from this job alert?</h2>
+<form method="post" action="/alerts/unsubscribe/{{ token }}"><button>Yes, unsubscribe</button> <a href="/" style="margin-left:12px">Keep it</a></form></div>
+{% endblock %}

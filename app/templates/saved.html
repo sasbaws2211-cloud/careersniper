@@ -1,0 +1,63 @@
+{% extends "_tenant.html" %}
+{% block title %}Liked jobs · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<h1 style="margin:16px 0 8px">Your reactions</h1>
+<p class="muted" style="margin-bottom:16px">Organize roles you have liked or hidden. Liked jobs stay here; disliked ones stay out of your main feed.</p>
+
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+  <a class="btn" href="/saved?tab=liked" style="{{ '' if tab=='liked' else 'background:transparent;color:inherit;border:1px solid var(--line)' }}">
+    Liked ({{ counts.liked }})
+  </a>
+  <a class="btn" href="/saved?tab=disliked" style="{{ '' if tab=='disliked' else 'background:transparent;color:inherit;border:1px solid var(--line)' }}">
+    Disliked ({{ counts.disliked }})
+  </a>
+  <a class="btn" href="/saved?tab=all" style="{{ '' if tab=='all' else 'background:transparent;color:inherit;border:1px solid var(--line)' }}">
+    All
+  </a>
+</div>
+
+{% for sj, j in rows %}
+<div class="card" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+  <div>
+    <a href="/jobs/{{ j.id }}"><b>{{ j.title }}</b></a>
+    <div class="muted">{{ j.company.name }}{% if j.location %} · {{ j.location[:80] }}{% endif %}
+      · <span class="tag">{{ sj.status }}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    {% if sj.status != 'liked' %}
+    <form method="post" action="/jobs/{{ j.id }}/react" style="margin:0">
+      <input type="hidden" name="reaction" value="liked">
+      <input type="hidden" name="next" value="/saved?tab={{ tab }}">
+      <button class="ghost" style="padding:5px 12px">Like</button>
+    </form>
+    {% endif %}
+    {% if sj.status != 'disliked' %}
+    <form method="post" action="/jobs/{{ j.id }}/react" style="margin:0">
+      <input type="hidden" name="reaction" value="disliked">
+      <input type="hidden" name="next" value="/saved?tab={{ tab }}">
+      <button class="ghost" style="padding:5px 12px">Dislike</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/jobs/{{ j.id }}/react" style="margin:0">
+      <input type="hidden" name="reaction" value="{{ sj.status }}">
+      <input type="hidden" name="next" value="/saved?tab={{ tab }}">
+      <button class="ghost" style="padding:5px 12px">Clear</button>
+    </form>
+    {% if j.id in visible %}
+    <a class="btn" style="padding:5px 12px" href="/go/{{ j.id }}" rel="nofollow">Apply</a>
+    {% else %}
+    <span class="muted" style="align-self:center">No longer listed</span>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card muted">
+  {% if tab == 'disliked' %}
+    No disliked jobs yet. Dislike roles you do not want to see in search.
+  {% else %}
+    Nothing here yet. Like jobs on the <a href="/jobs">Jobs</a> page to collect them.
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

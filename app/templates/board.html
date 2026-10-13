@@ -1,0 +1,215 @@
+{% extends "_tenant.html" %}
+{% block title %}Jobs · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  @media (max-width: 640px) {
+    .search { display: flex; flex-direction: column; gap: 8px; }
+    .search input, .search select, .search button { width: 100%; }
+    .filters { flex-direction: column !important; }
+    .filters select { width: 100%; }
+  }
+  .wrap { max-width: 1120px; }
+  .jobs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 8px; }
+  .side { position: sticky; top: 78px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .side h2 { font-size: 1rem; margin: 0 0 8px; }
+  .side label.f { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin: 12px 0 4px; }
+  .side select { width: 100%; }
+  .side .check { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; margin: 12px 0 0; color: var(--text); }
+  .side .check input { width: auto; }
+  .side .apply { width: 100%; margin-top: 14px; }
+  .side .clear { display: block; text-align: center; margin-top: 10px; font-size: 0.9rem; }
+  .topsearch { display: grid; grid-template-columns: 2fr 1.2fr auto; gap: 8px; margin: 0 0 14px; }
+  @media (max-width: 860px) {
+    .jobs-layout { grid-template-columns: 1fr; }
+    .side { position: static; }
+    .topsearch { grid-template-columns: 1fr; }
+  }
+  .empty { text-align: center; padding: 40px 16px; color: #6b7280; }
+  .empty a { margin-top: 12px; display: inline-block; }
+</style>
+
+
+{% if unlocked is defined and unlocked %}
+<div class="ok" style="margin-bottom:16px;padding:16px 18px;border-radius:12px;background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46">
+  <b style="display:block;font-size:1.1rem;margin-bottom:4px">You’re in — search is unlocked.</b>
+  <span>Full results, filters, and alerts are available. Start searching below.</span>
+</div>
+{% endif %}
+
+<div class="hero">
+  <h1>{{ org.tagline or "Jobs from company career pages" }}</h1>
+  <div class="muted">
+    {% if is_preview is defined and is_preview %}
+      Free preview · showing {{ jobs|length }} of {{ total }} matching role{{ '' if total == 1 else 's' }}
+    {% else %}
+      {{ total }} open role{{ '' if total == 1 else 's' }}
+    {% endif %}
+  </div>
+</div>
+
+{% if is_preview is defined and is_preview %}
+<div class="card" style="background:#eff6ff;border-color:#93c5fd;margin-bottom:16px;color:#1f2937;">
+  <b>You're viewing a free preview.</b>
+  {% if total > (jobs|length) %}
+    <span>{{ total - (jobs|length) }} more matching job{{ '' if (total - jobs|length) == 1 else 's' }} are behind the paywall.</span>
+  {% endif %}
+  Unlock the full database, all filters, and direct apply from $7/week.
+  <a class="btn" href="/pricing" style="margin-left:8px">See plans</a>
+  <a class="btn" href="/checkout?plan=monthly" style="margin-left:6px;background:#111">Get Monthly — $20</a>
+</div>
+{% endif %}
+
+{% if lens_on %}
+<div class="card lens" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand)">
+  <span><b>Jobs that match your résumé</b> <span class="muted">{{ lens_offer.summary }}</span></span>
+  <span style="display:flex;gap:14px"><a href="/resume">Edit</a><a href="/jobs?for=all">Show all jobs</a></span>
+</div>
+{% elif lens_offer and lens_paused %}
+<div class="card muted" style="padding:10px 14px">Your résumé view is paused while you search. <a href="/jobs">Back to jobs that match your résumé</a></div>
+{% elif lens_offer and for_all %}
+<div class="card muted" style="padding:10px 14px">Showing all jobs. <a href="/jobs">Show only jobs that match your résumé ({{ lens_offer.summary }})</a></div>
+{% elif lens_hint %}
+<div class="card" style="padding:10px 14px"><b>See jobs that fit you.</b> <a href="/resume">Upload your résumé</a> and this page shows the roles that match your experience.</div>
+{% endif %}
+
+<div class="jobs-layout">
+<aside class="side" aria-label="Filters">
+  <h2>Filters</h2>
+  <label class="f" for="f-sort">Sort by</label>
+  <select id="f-sort" name="sort" form="jobsearch" onchange="this.form.submit()">
+    {% for k, label in sorts.items() %}<option value="{{ k }}" {{'selected' if sort==k}}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="f" for="f-days">Posted</label>
+  <select id="f-days" name="days" form="jobsearch" onchange="this.form.submit()">
+    <option value="0">Any time</option>
+    {% for d,l in [(1,'Past 24h'),(7,'Past week'),(30,'Past month')] %}
+      <option value="{{d}}" {{'selected' if days==d}}>{{l}}</option>
+    {% endfor %}
+  </select>
+  <label class="f" for="f-country">Country</label>
+  <select id="f-country" name="country" form="jobsearch" onchange="this.form.submit()">
+    <option value="">Any country</option>
+    {% for code, name in countries %}<option value="{{ code }}" {{'selected' if flt.country==code}}>{{ name }}</option>{% endfor %}
+  </select>
+  <label class="f" for="f-type">Job type</label>
+  <select id="f-type" name="type" form="jobsearch" onchange="this.form.submit()">
+    <option value="">Any job type</option>
+    {% for k, label in job_types.items() %}<option value="{{ k }}" {{'selected' if flt.job_type==k}}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="f" for="f-level">Level</label>
+  <select id="f-level" name="level" form="jobsearch" onchange="this.form.submit()">
+    <option value="">Any level</option>
+    {% for k, label in levels.items() %}<option value="{{ k }}" {{'selected' if flt.seniority==k}}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="f" for="f-minpay">Minimum pay (USD / yr)</label>
+  <select id="f-minpay" name="min_pay" form="jobsearch" aria-label="Minimum pay per year (USD)" onchange="this.form.submit()">
+    <option value="">Any</option>
+    {% for v in pay_steps %}<option value="{{ v }}" {{'selected' if flt.pay_min==v}}>${{ '{:,}'.format(v) }}+ / yr</option>{% endfor %}
+    {% if flt.pay_min and flt.pay_min not in pay_steps %}<option value="{{ flt.pay_min }}" selected>${{ '{:,}'.format(flt.pay_min) }}+ / yr</option>{% endif %}
+  </select>
+  <label class="f" for="f-maxpay">Maximum pay (USD / yr)</label>
+  <select id="f-maxpay" name="max_pay" form="jobsearch" aria-label="Maximum pay per year (USD)" onchange="this.form.submit()">
+    <option value="">Any</option>
+    {% for v in pay_steps %}<option value="{{ v }}" {{'selected' if flt.pay_max==v}}>up to ${{ '{:,}'.format(v) }} / yr</option>{% endfor %}
+    {% if flt.pay_max and flt.pay_max not in pay_steps %}<option value="{{ flt.pay_max }}" selected>up to ${{ '{:,}'.format(flt.pay_max) }} / yr</option>{% endif %}
+  </select>
+  <label class="f" for="f-remote-from">Remote jobs open to</label>
+  <select id="f-remote-from" name="remote_from" form="jobsearch" onchange="this.form.submit()">
+    <option value="">Anywhere</option>
+    {% for key, label in remote_regions %}<option value="{{ key }}" {{'selected' if flt.remote_from==key}}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="f" for="f-visa">Visa sponsorship</label>
+  <select id="f-visa" name="visa" form="jobsearch" onchange="this.form.submit()">
+    <option value="">Any</option>
+    {% for k, label in visa_choices.items() %}<option value="{{ k }}" {{'selected' if flt.visa==k}}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="check"><input type="checkbox" name="remote" value="true" form="jobsearch" onchange="this.form.submit()" {{ 'checked' if remote }}> Remote only</label>
+  <label class="check"><input type="checkbox" name="paid" value="true" form="jobsearch" onchange="this.form.submit()" {{ 'checked' if flt.paid }}> Pay listed</label>
+  <button class="apply" type="submit" form="jobsearch">Apply filters</button>
+  {% if flt.active or remote or days or sort != 'new' %}<a href="/jobs{{ '?for=all' if for_all }}" class="clear">Clear filters</a>{% endif %}
+</aside>
+
+<div class="jobs-main">
+<form id="jobsearch" class="topsearch" method="get" action="/jobs">
+  {% if for_all %}<input type="hidden" name="for" value="all">{% endif %}
+  <input name="q" value="{{ q }}" placeholder="Job title, skill or company" aria-label="Search">
+  <input name="loc" value="{{ loc }}" placeholder="Location" aria-label="Location">
+  <button type="submit">Search</button>
+</form>
+{% if flt.pay_min or flt.pay_max %}
+<p class="muted" style="font-size:13px">Pay filters compare approximate US dollars per year, converted from each post's own currency and period. Posts that list no pay are left out.</p>
+{% endif %}
+{% if flt.remote_from %}
+<p class="muted" style="font-size:13px">A post that only says "Remote" names no region, so it is not matched to one.</p>
+{% endif %}
+{% if flt.visa %}
+<p class="muted" style="font-size:13px">Most posts do not mention visas at all. "Sponsors visas" shows only posts that say so.</p>
+{% endif %}
+
+{% if jobs %}
+  {% for j in jobs %}
+  {% include "_job_card.html" %}
+  {% endfor %}
+
+  {% if is_preview is defined and is_preview and total > (jobs|length) %}
+  <div class="paywall-cta">
+    <div class="big">{{ total - (jobs|length) }} more job{{ '' if (total - jobs|length) == 1 else 's' }} match your search</div>
+    <p class="muted">Subscribe to see every listing, use all filters, and apply directly to company career pages.</p>
+    <a class="btn" href="/checkout?plan=pass" style="background:transparent;color:inherit;border:1px solid #94a3b8">3 days — $3</a>
+    <a class="btn" href="/checkout?plan=weekly" style="margin-left:8px">Weekly — $7</a>
+    <a class="btn" href="/checkout?plan=monthly" style="background:#111;margin-left:8px">Monthly — $20</a>
+    <a class="btn" href="/checkout?plan=lifetime" style="margin-left:8px;background:transparent;color:inherit;border:1px solid #94a3b8">Lifetime — $50</a>
+  </div>
+  {% endif %}
+
+  {% set qs = ('&for=all' if for_all else '') ~ '&q=' ~ (q|urlencode) ~ '&loc=' ~ (loc|urlencode) ~ '&days=' ~ days ~ ('&remote=true' if remote else '') ~ ('&country=' ~ flt.country if flt.country else '') ~ ('&type=' ~ flt.job_type if flt.job_type else '') ~ ('&level=' ~ flt.seniority if flt.seniority else '') ~ ('&paid=true' if flt.paid else '') ~ ('&remote_from=' ~ flt.remote_from if flt.remote_from else '') ~ ('&visa=' ~ flt.visa if flt.visa else '') ~ ('&sort=' ~ sort if sort != 'new' else '') ~ ('&min_pay=' ~ flt.pay_min if flt.pay_min else '') ~ ('&max_pay=' ~ flt.pay_max if flt.pay_max else '') %}
+  {% if pages > 1 and not (is_preview is defined and is_preview) %}
+  <div class="pager">
+    {% if page > 1 %}<a class="btn" href="?page={{ page-1 }}{{ qs }}">←</a>{% endif %}
+    <span class="muted">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn" href="?page={{ page+1 }}{{ qs }}">→</a>{% endif %}
+  </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty">
+    <p><b>No jobs match your search.</b></p>
+    <p>Try a broader title, clear filters, or check back after the next scrape.</p>
+    <a class="btn" href="/jobs">Clear search</a>
+  </div>
+{% endif %}
+
+<div class="card" style="margin-top:24px">
+  <h2 style="margin:0 0 8px;font-size:1.1rem">Email me new matching jobs</h2>
+  <p class="muted" style="margin:0 0 12px">Get a digest when roles match this search. Confirm via email — no spam.</p>
+  <form method="post" action="/alerts" class="search" style="align-items:end">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="loc" value="{{ loc }}">
+    <input type="hidden" name="remote" value="{{ 'true' if remote else '' }}">
+    <input type="hidden" name="country" value="{{ flt.country or '' }}">
+    <input type="hidden" name="type" value="{{ flt.job_type or '' }}">
+    <input type="hidden" name="level" value="{{ flt.seniority or '' }}">
+    <input type="hidden" name="min_pay" value="{{ flt.pay_min or '' }}">
+    <input type="hidden" name="max_pay" value="{{ flt.pay_max or '' }}">
+    <input type="hidden" name="paid" value="{{ 'true' if flt.paid else '' }}">
+    <input type="hidden" name="remote_from" value="{{ flt.remote_from or '' }}">
+    <input type="hidden" name="visa" value="{{ flt.visa or '' }}">
+    <input type="text" name="website" value="" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+    <label style="flex:1">Email
+      <input type="email" name="email" required placeholder="you@example.com" value="{{ memail or '' }}">
+    </label>
+    <label>Frequency
+      <select name="frequency">
+        {% if has_access %}<option value="hourly">Hourly &mdash; be first to apply</option>{% else %}<option value="hourly" disabled>Hourly (subscribers only)</option>{% endif %}
+        <option value="daily" selected>Daily</option>
+        <option value="weekly">Weekly</option>
+      </select>
+    </label>
+    <button type="submit">Create alert</button>
+  </form>
+</div>
+
+</div>
+</div>
+{% endblock %}

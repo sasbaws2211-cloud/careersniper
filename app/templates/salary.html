@@ -1,0 +1,45 @@
+{% extends "_tenant.html" %}
+{% block title %}{{ g.name }} salary: ${{ '{:,.0f}'.format(g.median) }} a year (median) · {{ PLATFORM }}{% endblock %}
+{% block head %}<meta name="description" content="What a {{ g.name }} is paid, from {{ g.n }} pay ranges that {{ g.companies }} employers published: typically ${{ '{:,.0f}'.format(g.p25) }} to ${{ '{:,.0f}'.format(g.p75) }} a year.">
+<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block body %}
+<style>
+  .range { position: relative; height: 14px; background: var(--line); border-radius: 99px; margin: 14px 0 6px; }
+  .range .mid { position: absolute; top: 0; bottom: 0; background: #2563eb; border-radius: 99px; }
+  .range .med { position: absolute; top: -4px; bottom: -4px; width: 3px; background: #f59e0b; }
+  .ends { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); }
+</style>
+<p><a href="/salaries">&larr; All roles</a></p>
+<div class="hero"><h1>{{ g.name }} salary</h1>
+  <div class="muted">From {{ g.n }} pay ranges published by {{ g.companies }} employers for jobs open now</div></div>
+
+<div class="card">
+  <div style="font-size:2rem;font-weight:700">${{ '{:,.0f}'.format(g.median) }} <span class="muted" style="font-size:1rem;font-weight:400">a year, median</span></div>
+  <div class="muted">Most roles pay between <b>${{ '{:,.0f}'.format(g.p25) }}</b> and <b>${{ '{:,.0f}'.format(g.p75) }}</b> (the middle half of postings, with every employer counting equally).</div>
+  <div class="range" role="img" aria-label="Pay runs from ${{ '{:,.0f}'.format(g.low) }} to ${{ '{:,.0f}'.format(g.high) }}; the middle half is ${{ '{:,.0f}'.format(g.p25) }} to ${{ '{:,.0f}'.format(g.p75) }}">
+    <div class="mid" style="left:{{ left }}%;width:{{ width }}%"></div><div class="med" style="left:{{ med }}%"></div>
+  </div>
+  <div class="ends"><span>${{ '{:,.0f}'.format(g.low) }} lowest</span><span>${{ '{:,.0f}'.format(g.high) }} highest</span></div>
+  <div class="muted" style="font-size:0.9rem;margin-top:8px">{{ g.remote_pct }}% of these roles are remote.</div>
+</div>
+
+{% if g.levels %}
+<div class="card"><b>By level</b>
+  <table>{% for name, s in g.levels %}<tr><td>{{ name }}</td><td><b>${{ '{:,.0f}'.format(s.median) }}</b> <span class="muted">median</span></td><td class="muted">{{ s.n }} postings</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% if g.countries %}
+<div class="card"><b>By country</b> <span class="muted">(where the job is based; a remote job counts in every country it is open to)</span>
+  <table>{% for name, s in g.countries %}<tr><td>{{ name }}</td><td><b>${{ '{:,.0f}'.format(s.median) }}</b> <span class="muted">median</span></td><td class="muted">{{ s.n }} postings</td></tr>{% endfor %}</table></div>
+{% endif %}
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">
+  <a class="btn" href="{{ jobs_link }}">See {{ g.name }} jobs that list pay</a>
+  <a class="btn ghost" href="/jobs?q={{ g.name|urlencode }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">All {{ g.name }} jobs</a>
+</div>
+
+<div class="card muted" style="font-size:0.88rem">
+  <b>How to read this.</b> These are pay ranges that employers published on their own career pages, converted to approximate US dollars a year using the middle of each range. Every employer counts equally, so a company that posts the same job in twenty countries counts once.
+  They are not a survey of what people earn. They lean towards employers that publish pay: many tech companies and places with pay-transparency laws. A role is only
+  listed when at least {{ min_samples }} postings from {{ min_companies }} employers list pay, so one company cannot set the figure. Use it as a guide when you negotiate, not as a promise.
+</div>
+{% endblock %}

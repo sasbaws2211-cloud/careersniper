@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import bars %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="grid">
+  <div class="stat"><b>{{ '{:,}'.format(d.members.total) }}</b><span>members</span><small>{{ d.members.new_7d }} new this week &middot; {{ d.members.unverified }} unconfirmed</small></div>
+  <div class="stat"><b>{{ d.live_plans }}</b><span>live plans</span><small>{% for p, n in d.plans.items() %}{{ n }} {{ p }}{{ ' · ' if not loop.last }}{% else %}none yet{% endfor %}</small></div>
+  <div class="stat"><b>GH₵{{ '{:,.0f}'.format(d.revenue.ghs_30d) }}</b><span>taken in 30 days</span><small>about ${{ '{:,.0f}'.format(d.revenue.usd_30d) }} &middot; {{ d.revenue.payments_30d }} payments</small></div>
+  <div class="stat {{ 'warn' if d.revenue.failed_7d or d.revenue.stuck }}"><b>{{ d.revenue.failed_7d }}</b><span>failed payments (7 days)</span><small>{{ d.revenue.stuck }} checkouts open for over an hour</small></div>
+  <div class="stat"><b>{{ '{:,}'.format(d.jobs.live) }}</b><span>live jobs</span><small>{{ d.jobs.removed }} removed by admins</small></div>
+  <div class="stat {{ 'warn' if d.scrape.errors or d.scrape.stale }}"><b>{{ d.scrape.companies }}</b><span>companies scraped</span><small>{{ d.scrape.errors }} with errors &middot; {{ d.scrape.stale }} stale &middot; {{ d.scrape.never }} never scraped<br>last scrape {{ d.scrape.last|ago }}</small></div>
+  <div class="stat"><b>{{ d.ai.calls_today }}</b><span>AI requests (24 h)</span><small>{{ '{:,}'.format(d.ai.tokens_today) }} tokens</small></div>
+  <div class="stat"><b>{{ d.engagement.referrals }}</b><span>referrals</span><small>{{ d.engagement.rewarded }} rewarded</small></div>
+</div>
+
+<div class="cols">
+  <section class="card"><h2>Sign-ups, 14 days</h2>{{ bars(d.signup_series, 'Sign-ups') }}</section>
+  <section class="card"><h2>Payments, 14 days</h2>{{ bars(d.payment_series, 'Payments') }}</section>
+  <section class="card"><h2>AI requests, 14 days</h2>{{ bars(d.ai_series, 'AI requests') }}</section>
+</div>
+
+<section class="card"><h2>Engagement</h2>
+  <div class="chips">
+    <span>{{ d.engagement.alerts }} job alerts</span><span>{{ d.engagement.follows }} company follows</span><span>{{ d.engagement.applications }} tracked applications</span>
+    <span>{{ d.engagement.resumes }} résumés</span><span>{{ d.engagement.documents }} AI documents</span><span>{{ d.engagement.interviews }} interview sessions</span>
+  </div>
+</section>
+
+<div class="cols two">
+  <section class="card"><h2>Newest members</h2>
+    <table>{% for m in d.recent_members %}<tr><td><a href="/members/{{ m.id }}">{{ m.email }}</a></td><td>{{ 'confirmed' if m.verified else 'unconfirmed' }}</td><td class="muted">{{ m.created_at|ago }}</td></tr>{% else %}<tr><td class="muted">No members yet.</td></tr>{% endfor %}</table></section>
+  <section class="card"><h2>Latest payments</h2>
+    <table>{% for p in d.recent_payments %}<tr><td>{{ p.customer_email }}</td><td>{{ p.plan }}</td><td>{{ p.amount_cents|money(p.currency) }}</td><td><span class="tag {{ 'ok' if p.status == 'paid' else ('err' if p.status == 'failed' else '') }}">{{ p.status }}</span></td></tr>{% else %}<tr><td class="muted">No payments yet.</td></tr>{% endfor %}</table></section>
+</div>
+<section class="card"><h2>Latest admin activity</h2>
+  <table>{% for a in d.recent_audit %}<tr><td>{{ a.admin_email }}</td><td><code>{{ a.action }}</code></td><td>{{ a.target }}</td><td class="muted">{{ a.created_at|ago }}</td></tr>{% else %}<tr><td class="muted">Nothing yet.</td></tr>{% endfor %}</table>
+  <p class="small"><a href="/audit">Full audit log</a></p></section>
+{% endblock %}

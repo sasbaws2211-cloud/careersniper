@@ -1,0 +1,510 @@
+Airtable
+Amplitude
+Anthropic
+Anduril
+Asana
+Atlassian
+Affirm
+Brex
+Block
+Bolt
+Box
+Braze
+Calendly
+Canva
+Carta
+Chime
+Circle
+Clever
+Clearbit
+Coda
+Confluent
+Contentful
+Coursera
+Crowdstrike
+Databricks
+Deel
+DoorDash
+Dropbox
+Duolingo
+Elastic
+Epic Games
+Etsy
+Faire
+Fastly
+Fivetran
+Flexport
+Gemini
+Gusto
+Grammarly
+Hashicorp
+Honeycomb
+Hubspot
+Instacart
+Intercom
+Ironclad
+Klaviyo
+Lattice
+Lime
+Loom
+Mercury
+Miro
+Mixpanel
+Modern Treasury
+MongoDB
+Monzo
+Netlify
+Nextdoor
+Nuro
+Okta
+Opendoor
+Optimizely
+Oscar Health
+PagerDuty
+Patreon
+Peloton
+Plaid
+PlanetScale
+Postman
+Procore
+Quora
+Retool
+Rippling
+Rivian
+Robinhood
+Roblox
+Scale AI
+Segment
+Sentry
+Shopify
+Slack
+Snowflake
+SoFi
+Squarespace
+Sumo Logic
+Superhuman
+Tailscale
+Thumbtack
+Toast
+Udemy
+Unity
+Vercel
+Warby Parker
+Webflow
+Wealthfront
+Whatnot
+Wise
+Zapier
+Zendesk
+Zscaler
+Supabase
+Cohere
+Perplexity
+Mistral
+Hugging Face
+Replit
+Figma
+Gitlab
+Grafana Labs
+Cockroach Labs
+Temporal
+Neon
+Clickhouse
+Fly
+Render
+Railway
+Pulumi
+Sourcegraph
+Linear
+Mux
+Stytch
+WorkOS
+Clerk
+Descript
+Ramp
+Navan
+Rubrik
+Samsara
+Sonos
+Stripe
+Twitch
+Squarespace
+Strava
+Spotify
+Sprinklr
+SendGrid
+Rocket Lawyer
+Reddit
+Pinterest
+Palantir
+Nerdwallet
+Medium
+Masterclass
+Mailchimp
+Kraken
+Justworks
+Jane Street
+Imgur
+Hims and Hers
+Hinge
+Harvey
+Handshake
+Glean
+Gong
+Fanduel
+Evernote
+Envoy
+Discord
+Cruise
+Compass
+Coinbase
+Cloudflare
+Chainalysis
+Checkr
+Carvana
+Calm
+Bumble
+Blue Origin
+Benchling
+Attentive
+Apollo
+AppLovin
+Anaplan
+Alation
+Algolia
+Airbnb
+Abnormal Security
+1Password
+Wiz
+Vanta
+Drata
+Snyk
+Sumup
+Typeform
+Trustpilot
+Zalando
+Bolt Financial
+Revolut
+Monzo Bank
+N26
+Starling Bank
+Checkout.com
+Klarna
+Wolt
+Deliveroo
+Gorillas
+Bitpanda
+Celonis
+GetYourGuide
+HelloFresh
+Personio
+Contentsquare
+Doctolib
+BlaBlaCar
+Qonto
+Ledger
+Back Market
+Algolia
+Payfit
+Alan
+Spendesk
+Ocado
+Cazoo
+Babylon
+Wayve
+Graphcore
+Darktrace
+Improbable
+Thought Machine
+Paddle
+Gocardless
+Onfido
+Cleo
+Hopin
+Depop
+Farfetch
+Sainsburys
+Ripple
+Binance
+Kraken Digital
+OpenSea
+Alchemy
+Consensys
+Chainlink Labs
+Uniswap Labs
+Paxos
+Anchorage
+Fireblocks
+BitGo
+Dapper Labs
+Polygon
+Solana
+Aptos
+Sui
+Near
+Gemini Trust
+Bitso
+Mercado Libre
+Nubank
+Rappi
+Kavak
+Clip
+Stori
+Konfio
+Creditas
+Loft
+QuintoAndar
+Ifood
+Gympass
+Vtex
+Paystack
+Flutterwave
+Andela
+Moniepoint
+Chipper Cash
+Wave
+Jumia
+Kuda
+Interswitch
+Opay
+Gojek
+Grab
+Sea
+Tokopedia
+Razorpay
+Cred
+Zerodha
+Swiggy
+Zomato
+Meesho
+Freshworks
+Postman
+Browserstack
+Chargebee
+Zeta
+Atlan
+Hasura
+Rapido
+Ola
+Udaan
+Lenskart
+Pine Labs
+Dream11
+Atlassian
+Canva
+Culture Amp
+Airwallex
+Afterpay
+Safetyculture
+Xero
+Employment Hero
+Linktree
+Rea Group
+Seek
+Zip
+Judo
+Immutable
+Lyft
+Uber
+Waymo
+Zoox
+Aurora
+Embark
+Nuro
+Mobileye
+Tesla
+Lucid
+Fisker
+Nikola
+Joby
+Archer
+Relativity Space
+Rocket Lab
+Planet
+Spire
+Astra
+Axiom Space
+Anduril Industries
+Shield AI
+Saronic
+Hadrian
+Applied Intuition
+Skydio
+Zipline
+Wing
+Flock Safety
+Verkada
+Samsara
+Motive
+Convoy
+Flexport
+Project44
+Fourkites
+Stord
+Shipbob
+Shipt
+Gopuff
+Getir
+Flink
+Picnic
+Oatly
+Impossible Foods
+Beyond Meat
+Eventbrite
+Ticketmaster
+Seatgeek
+Vivid Seats
+Zocdoc
+Tempus
+Flatiron Health
+Color
+Ro
+Hims
+Cerebral
+Headspace
+Calm
+Noom
+Whoop
+Oura
+Strava
+Peloton
+Tonal
+Mirror
+Zwift
+Garmin
+Fitbit
+Teladoc
+Livongo
+Omada
+Included Health
+Devoted Health
+Bright Health
+Clover Health
+Oscar
+Collective Health
+Nuna
+Komodo Health
+Veeva
+Epic
+Cerner
+Athenahealth
+Modernizing Medicine
+Zeus Living
+Sonder
+Vacasa
+Turo
+Getaround
+Hopper
+Navan
+Kayak
+Skyscanner
+Tripadvisor
+Expedia
+Booking
+Lime Scooters
+Bird
+Voi
+Tier
+Dott
+Veo
+Spin
+Chargepoint
+Evgo
+Tesla Energy
+Sunrun
+Sunnova
+Enphase
+Stem
+Fluence
+Form Energy
+Commonwealth Fusion
+Helion
+Climeworks
+Watershed
+Persefoni
+Sweep
+Pachama
+Patch
+Carbon Direct
+Redwood Materials
+Northvolt
+Lilium
+Vertical Aerospace
+Duolingo
+Khan Academy
+Coursera
+Udacity
+Kahoot
+Quizlet
+Chegg
+Instructure
+Canvas
+Blackboard
+Docebo
+Guild
+Handshake
+Course Hero
+Brainly
+Outschool
+Nerdy
+Varsity Tutors
+Codecademy
+Pluralsight
+Skillshare
+Masterclass
+Teachable
+Thinkific
+Kajabi
+Podia
+Gumroad
+Substack
+Ghost
+Beehiiv
+Mailerlite
+Convertkit
+Klaviyo
+Sendinblue
+Brevo
+Customer.io
+Iterable
+Braze
+Mparticle
+Segment
+Amplitude
+Heap
+Fullstory
+Hotjar
+Pendo
+Gainsight
+Totango
+Vitally
+Planhat
+Catalyst
+Zendesk
+Freshdesk
+Helpscout
+Front
+Gorgias
+Kustomer
+Intercom
+Drift
+Qualified
+Gong
+Clari
+Outreach
+Salesloft
+Apollo.io
+Zoominfo
+Seamless
+Lusha
+Cognism
+Clearbit
+6sense
+Demandbase
+Terminus
+Bombora
+G2
+Trustradius
+Capterra
+Gartner
+Forrester

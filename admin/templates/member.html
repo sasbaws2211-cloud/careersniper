@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ d.member.email }}{% endblock %}
+{% block content %}
+{% set m = d.member %}
+<p class="small"><a href="/members">&larr; Members</a></p>
+<h1>{{ m.email }}</h1>
+<p class="muted">Member #{{ m.id }} &middot; joined {{ m.created_at|dt }} &middot; email {{ 'confirmed' if m.verified else 'not confirmed' }}
+  {% if d.plan %}&middot; <span class="tag ok">{{ d.plan.plan }}</span> until {{ d.plan.ends|dt }}{% if d.plan.comped %} (free){% endif %}{% else %}&middot; no live plan{% endif %}</p>
+
+<div class="cols two">
+  <section class="card"><h2>Actions</h2>
+    {% if not m.verified %}
+    <form method="post" action="/members/{{ m.id }}/verify" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Confirm their email</button></form>
+    {% endif %}
+
+    <form method="post" action="/members/{{ m.id }}/grant" class="stack" data-confirm="Give this member free access?">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <b>Give free access</b>
+      <div class="row">
+        <label>Days<input name="days" type="number" min="1" max="365" value="7" required></label>
+        <label>Plan level<select name="plan">{% for p in plans %}<option value="{{ p }}" {{ 'selected' if p == 'weekly' }}>{{ p }}</option>{% endfor %}</select></label>
+      </div>
+      <label>Why (goes in the audit log)<input name="note" maxlength="200" required placeholder="e.g. apology for the payment error on 8 Oct"></label>
+      <button type="submit">Give access</button>
+    </form>
+
+    <form method="post" action="/members/{{ m.id }}/refund" class="stack" data-confirm="End this member's paid plan and withdraw any referral reward? You still return the money in the payment provider's dashboard.">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <b>Refund</b>
+      <p class="muted small">Ends their paid plan now and takes back the free week their inviter earned. It does not move money: return it in the payment provider's dashboard.</p>
+      <button class="danger" type="submit">End plan and withdraw reward</button>
+    </form>
+
+    {% if admin.is_owner %}
+    <form method="post" action="/members/{{ m.id }}/delete" class="stack" data-confirm="Permanently delete this account and everything attached to it?">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <b>Delete account</b>
+      <p class="muted small">Removes the member, résumé, tracker, documents, follows, AI history and alerts. This cannot be undone. Type their email to confirm.</p>
+      <input name="confirm_email" placeholder="{{ m.email }}" autocomplete="off" required>
+      <button class="danger" type="submit">Delete permanently</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="card"><h2>Activity</h2>
+    <table>
+      <tr><td>Tracked applications</td><td>{{ d.counts.applications }}</td></tr>
+      <tr><td>Companies followed</td><td>{{ d.counts.follows }}</td></tr>
+      <tr><td>AI documents</td><td>{{ d.counts.documents }}</td></tr>
+      <tr><td>Interview sessions</td><td>{{ d.counts.interviews }}</td></tr>
+      <tr><td>Active job alerts</td><td>{{ d.counts.alerts }}</td></tr>
+      <tr><td>Has a saved résumé</td><td>{{ 'yes' if d.counts.resume else 'no' }}</td></tr>
+    </table>
+    <h3>AI use</h3>
+    <table>{% for tool, n, tokens in d.ai %}<tr><td>{{ tool }}</td><td>{{ n }} calls</td><td class="muted">{{ '{:,}'.format(tokens) }} tokens</td></tr>{% else %}<tr><td class="muted">No AI use.</td></tr>{% endfor %}</table>
+    <h3>Referrals</h3>
+    <p class="small">Their link code: <code>{{ d.ref_code or 'not made yet' }}</code>{% if d.referred_by %}<br>Invited by {{ d.referred_by[0] }} ({{ d.referred_by[1] }}){% endif %}</p>
+    {% if d.referred %}<table>{% for id, email, status in d.referred %}<tr><td><a href="/members/{{ id }}">{{ email }}</a></td><td>{{ status }}</td></tr>{% endfor %}</table>{% endif %}
+  </section>
+</div>
+
+<section class="card flush"><h2 class="pad">Plans</h2>
+  <table><thead><tr><th>Plan</th><th>Status</th><th>Paid</th><th>Started</th><th>Ends</th></tr></thead>
+  {% for s in d.subs %}<tr><td>{{ s.plan }}</td><td>{{ s.status }}</td><td>{{ 'free' if s.amount_cents == 0 else (s.amount_cents|money(s.currency)) }}</td><td>{{ s.current_period_start|dt }}</td><td>{{ s.current_period_end|dt }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No plans.</td></tr>{% endfor %}</table></section>
+
+<section class="card flush"><h2 class="pad">Payments</h2>
+  <table><thead><tr><th>Reference</th><th>Plan</th><th>Amount</th><th>Status</th><th>When</th></tr></thead>
+  {% for c in d.checkouts %}<tr><td><code>{{ c.tx_ref }}</code></td><td>{{ c.plan }}</td><td>{{ c.amount_cents|money(c.currency) }}</td><td><span class="tag {{ 'ok' if c.status == 'paid' else ('err' if c.status == 'failed' else '') }}">{{ c.status }}</span></td><td>{{ (c.completed_at or c.created_at)|dt }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">No payments.</td></tr>{% endfor %}</table></section>
+{% endblock %}

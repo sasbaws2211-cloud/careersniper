@@ -1,0 +1,27 @@
+{% extends "_tenant.html" %}
+{% block title %}Cover letters · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Your cover letters</h1>
+  <div class="muted">{{ rows|length }} saved &middot; write one from any job page</div></div>
+
+<div class="tabs" style="display:flex;gap:8px;margin:0 0 16px">
+  <a class="btn" href="/letters">Cover letters</a>
+  <a class="btn ghost" href="/tailored" style="background:transparent;color:inherit;border:1px solid #94a3b8">Tailored résumés</a>
+</div>
+
+{% for doc, job in rows %}
+<div class="card" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+  <div>
+    <a href="/letters/{{ doc.id }}"><b>{{ doc.title }}</b></a>
+    <div class="muted">{{ doc.created_at.strftime('%d %b %Y') }}{% if job and not job.active %} &middot; the posting has closed{% endif %}</div>
+    <div class="muted" style="font-size:0.9rem">{{ doc.content[:140] }}{% if doc.content|length > 140 %}&hellip;{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:6px">
+    <a class="btn" href="/letters/{{ doc.id }}">Open</a>
+    <a class="btn ghost" href="/letters/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">.txt</a>
+  </div>
+</div>
+{% else %}
+<div class="card muted">No cover letters yet. Open a job and press <b>Write cover letter</b>, or <a href="/match">find your best matches</a> first.</div>
+{% endfor %}
+{% endblock %}

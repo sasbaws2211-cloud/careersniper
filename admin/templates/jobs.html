@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block content %}
+<h1>Jobs</h1>
+<form method="get" class="filters">
+  <input name="q" value="{{ q }}" placeholder="Job title or company" aria-label="Search">
+  <select name="state" aria-label="Show">{% for v, l in [('live','Live on the site'),('removed','Removed by an admin'),('closed','Closed by the employer'),('all','Everything')] %}<option value="{{ v }}" {{ 'selected' if state == v }}>{{ l }}</option>{% endfor %}</select>
+  <button type="submit">Filter</button>{% if q or state != 'live' %}<a class="btn ghost" href="/jobs">Clear</a>{% endif %}
+</form>
+<div class="card flush"><table>
+  <thead><tr><th>Job</th><th>Company</th><th>Where</th><th>First seen</th><th></th></tr></thead>
+  {% for r in rows %}{% set j = r.job %}
+  <tr>
+    <td>{% if j.active and j.status != 'removed' %}<a href="{{ site_url }}/jobs/{{ j.id }}" target="_blank" rel="noopener noreferrer">{{ j.title }}</a>{% else %}{{ j.title }}{% endif %}
+      {% if j.status == 'removed' %}<span class="tag err">removed</span>{% elif not j.active %}<span class="tag">closed</span>{% endif %}</td>
+    <td>{{ r.company }}</td><td class="muted">{{ j.location[:40] }}</td><td class="muted">{{ j.first_seen|dt('%d %b %Y') }}</td>
+    <td class="actions">
+      {% if j.status == 'removed' %}
+      <form method="post" action="/jobs/{{ j.id }}/restore"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/jobs?state=removed"><button class="ghost small" type="submit">Restore</button></form>
+      {% else %}
+      <form method="post" action="/jobs/{{ j.id }}/remove" class="inline-form" data-prompt="Why remove this job? (goes in the audit log)" data-prompt-field="reason">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="reason" value=""><input type="hidden" name="back" value="/jobs?q={{ q|urlencode }}&state={{ state }}&page={{ page }}"><button class="ghost small" type="submit">Remove</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="muted">No jobs match.</td></tr>{% endfor %}
+</table></div>
+{{ pager(page, pages, total, {'q': q, 'state': state}) }}
+<p class="muted small">Removing a job hides it from the site for good, even if the employer keeps it on their board and every scrape finds it again.</p>
+{% endblock %}

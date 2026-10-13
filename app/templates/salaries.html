@@ -1,0 +1,23 @@
+{% extends "_tenant.html" %}
+{% block title %}What do jobs pay? Salaries from real postings · {{ PLATFORM }}{% endblock %}
+{% block head %}<meta name="description" content="What employers say jobs pay, taken from the pay ranges on their own career pages and shown in US dollars a year.">{% endblock %}
+{% block body %}
+<div class="hero"><h1>What do jobs pay?</h1>
+  <div class="muted">Pay ranges that employers published for jobs open now, in approximate US dollars a year</div></div>
+
+<form class="search" method="get" action="/salaries">
+  <input name="q" value="{{ q }}" placeholder="Search a role, e.g. data analyst" aria-label="Search roles">
+  <button type="submit">Search</button>
+</form>
+
+{% for g in rows %}
+<a class="card" href="/salaries/{{ g.slug }}" style="display:flex;justify-content:space-between;gap:12px;text-decoration:none;color:inherit;align-items:center;flex-wrap:wrap">
+  <b>{{ g.name }}</b>
+  <span><b>${{ '{:,.0f}'.format(g.median) }}</b> <span class="muted">median &middot; {{ g.n }} postings at {{ g.companies }} companies</span></span>
+</a>
+{% else %}
+<div class="card muted">{% if q %}No salary page for &ldquo;{{ q }}&rdquo; yet: we only publish a role once at least {{ min_samples }} postings from {{ min_companies }} employers list pay.{% else %}No roles have enough published pay data yet.{% endif %}</div>
+{% endfor %}
+
+<p class="muted" style="font-size:0.85rem;margin-top:20px">These are the pay ranges employers published on their own career pages, not a survey. They lean towards employers that publish pay.</p>
+{% endblock %}

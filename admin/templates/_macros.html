@@ -1,0 +1,23 @@
+{% macro pager(page, pages, total, params) %}
+{% if pages > 1 %}
+<nav class="pager" aria-label="Pages">
+  {% set q = params|urlencode %}
+  {% if page > 1 %}<a class="btn ghost" href="?{{ q }}{{ '&' if q }}page={{ page - 1 }}">&larr; Previous</a>{% endif %}
+  <span class="muted">Page {{ page }} of {{ pages }} &middot; {{ '{:,}'.format(total) }} in all</span>
+  {% if page < pages %}<a class="btn ghost" href="?{{ q }}{{ '&' if q }}page={{ page + 1 }}">Next &rarr;</a>{% endif %}
+</nav>
+{% else %}<p class="muted small">{{ '{:,}'.format(total) }} in all</p>{% endif %}
+{% endmacro %}
+
+{% macro bars(series, label) %}
+{% set top = [1] %}{% for p in series %}{% if p.value > top[0] %}{% set _ = top.__setitem__(0, p.value) %}{% endif %}{% endfor %}
+<svg class="bars" viewBox="0 0 280 64" role="img" aria-label="{{ label }}: {{ series|map(attribute='value')|sum }} in 14 days">
+  {% for p in series %}
+  {% set h = (p.value / top[0] * 48)|round(1) %}
+  <rect x="{{ loop.index0 * 20 }}" y="{{ 54 - h }}" width="15" height="{{ h if h > 0 else 0.5 }}" rx="2"><title>{{ p.label }}: {{ p.value }}</title></rect>
+  {% endfor %}
+  <text x="0" y="63">{{ series[0].label }}</text><text x="280" y="63" text-anchor="end">{{ series[-1].label }}</text>
+</svg>
+{% endmacro %}
+
+{% macro csrf_field(token) %}<input type="hidden" name="csrf" value="{{ token }}">{% endmacro %}

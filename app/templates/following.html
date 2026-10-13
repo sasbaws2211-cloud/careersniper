@@ -1,0 +1,46 @@
+{% extends "_tenant.html" %}
+{% block title %}Companies you follow · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Companies you follow</h1>
+  <div class="muted">{{ rows|length }} compan{{ 'y' if rows|length == 1 else 'ies' }} &middot; new roles from them arrive in one email a week</div></div>
+
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if msg %}<div class="ok">{{ msg }}</div>{% endif %}
+
+<div class="card">
+  <form method="post" action="/following/digest" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0">
+    <input type="hidden" name="enabled" value="{{ '0' if enabled else '1' }}">
+    <span>Weekly email: <b>{{ 'on' if enabled else 'off' }}</b></span>
+    <button class="ghost" type="submit">{{ 'Turn it off' if enabled else 'Turn it on' }}</button>
+  </form>
+  {% if enabled and not verified %}
+  <p class="muted" style="margin:8px 0 0;font-size:0.9rem">Your email is not confirmed yet, so we are holding the emails. <a href="/account">Confirm it from your account</a>.</p>
+  {% endif %}
+</div>
+
+{% if recent %}
+<h2 style="font-size:1.1rem">New in the last 7 days</h2>
+{% for name, roles in recent.items() %}
+<div class="card">
+  <b>{{ name }}</b>
+  <ul style="margin:6px 0 0;padding-left:1.2em">
+    {% for r in roles[:5] %}<li><a href="/jobs/{{ r.id }}">{{ r.title }}</a>{% if r.location %} <span class="muted">&middot; {{ r.location[:60] }}</span>{% endif %}</li>{% endfor %}
+    {% if roles|length > 5 %}<li class="muted">and {{ roles|length - 5 }} more</li>{% endif %}
+  </ul>
+</div>
+{% endfor %}
+{% elif rows %}
+<div class="card muted">Nothing new from the companies you follow this week.</div>
+{% endif %}
+
+<h2 style="font-size:1.1rem">Following</h2>
+{% for d in rows %}
+<div class="card" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+  <span style="display:flex;gap:12px;align-items:center"><span class="av" aria-hidden="true">{{ d.company.name[:1]|upper }}</span>
+    <span><a href="{{ d.path }}"><b>{{ d.company.name }}</b></a><br><span class="muted">{{ d.open }} open role{{ '' if d.open == 1 else 's' }}</span></span></span>
+  <form method="post" action="/companies/{{ d.company.id }}/unfollow" style="margin:0"><input type="hidden" name="next" value="/following"><button class="ghost" type="submit">Unfollow</button></form>
+</div>
+{% else %}
+<div class="card muted">You are not following any company yet. Open a <a href="/companies">company page</a> and press <b>Follow</b>.</div>
+{% endfor %}
+{% endblock %}

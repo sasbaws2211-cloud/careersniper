@@ -1,0 +1,40 @@
+{% extends "_tenant.html" %}
+{% block title %}Interview coach · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Interview coach</h1>
+  <div class="muted">Practice questions for a real job, then honest feedback on your answers</div></div>
+
+{% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}</div>{% endif %}
+
+{% if not ai_on %}
+  <div class="card muted">The interview coach is not available right now. Please check back soon.</div>
+{% else %}
+  <form method="post" action="/interview/new" class="card">
+    <b>Practise for a job</b>
+    <p class="muted" style="margin:4px 0 10px;font-size:0.92rem">Fastest: open a job on the site and press <b>Practice interview</b>. Or enter any role here.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <label style="flex:1;min-width:200px">Job title<input name="role" required maxlength="200" value="{{ form.role }}" placeholder="Backend Engineer" style="width:100%;box-sizing:border-box"></label>
+      <label style="flex:1;min-width:200px">Company <span class="muted">(optional)</span><input name="company" maxlength="200" value="{{ form.company }}" placeholder="Acme" style="width:100%;box-sizing:border-box"></label>
+    </div>
+    <label style="display:block;margin-top:10px">Paste the job description <span class="muted">(optional, makes the questions much better)</span>
+      <textarea name="posting" rows="5" maxlength="6000" style="width:100%;box-sizing:border-box">{{ form.posting }}</textarea></label>
+    <p class="muted" style="font-size:13px">Making the questions and giving feedback on each answer use AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).
+      {% if not has_resume %}Add your <a href="/resume">résumé</a> for questions about your own experience.{% endif %}</p>
+    <button type="submit">Make my practice questions</button>
+  </form>
+{% endif %}
+
+<h2 style="font-size:1.1rem">Your practice sessions</h2>
+{% for s, job in rows %}
+  {% set total, answered, fed = progress(s) %}
+  <div class="card" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+    <div>
+      <a href="/interview/{{ s.id }}"><b>{{ s.role }}{% if s.company %} at {{ s.company }}{% endif %}</b></a>
+      <div class="muted">{{ s.created_at.strftime('%d %b %Y') }} &middot; {{ answered }} of {{ total }} answered &middot; {{ fed }} with feedback</div>
+    </div>
+    <a class="btn" href="/interview/{{ s.id }}">{{ 'Continue' if answered < total else 'Review' }}</a>
+  </div>
+{% else %}
+  <div class="card muted">No practice sessions yet.</div>
+{% endfor %}
+{% endblock %}

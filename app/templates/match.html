@@ -1,0 +1,75 @@
+{% extends "_tenant.html" %}
+{% block title %}Job match · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<style>
+  .score { display: inline-block; min-width: 3.2em; text-align: center; padding: 3px 8px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; }
+  .score.hi { background: #dcfce7; color: #166534; } .score.mid { background: #fef9c3; color: #854d0e; } .score.lo { background: #e2e8f0; color: #4b5563; }
+  .m { display: flex; flex-direction: column; gap: 6px; }
+  .m .top { display: flex; gap: 12px; align-items: flex-start; }
+  .m .gaps { color: #92400e; font-size: 0.9rem; }
+  .filters2 { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+</style>
+
+<div class="hero"><h1>Job match</h1>
+  <div class="muted">Your résumé against the live jobs, ranked, with the reason each one fits</div></div>
+
+{% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}</div>{% endif %}
+
+{% if not ai_on %}
+  <div class="card muted">Job match is not available right now. Please check back soon.</div>
+{% elif not has_resume %}
+  <div class="card">
+    <p><b>Start by adding your résumé.</b> Paste it as plain text and we will find the live jobs that fit it.</p>
+    <a class="btn" href="/resume">Add my résumé</a>
+  </div>
+{% else %}
+  <form method="post" action="/match" class="card">
+    <div class="filters2">
+      <label>Remote jobs open to
+        <select name="remote_from"><option value="">Anywhere / any</option>
+          {% for key, label in regions %}<option value="{{ key }}" {{ 'selected' if flt.remote_from == key }}>{{ label }}</option>{% endfor %}
+        </select></label>
+      <label>Visa
+        <select name="visa"><option value="">No preference</option>
+          {% for k, label in visa_choices.items() %}<option value="{{ k }}" {{ 'selected' if flt.visa == k }}>{{ label }}</option>{% endfor %}
+        </select></label>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" name="paid" value="true" {{ 'checked' if flt.paid }}> Pay listed</label>
+      <button type="submit">{{ 'Find my matches again' if match else 'Find my matches' }}</button>
+    </div>
+    <p class="muted" style="font-size:13px;margin:10px 0 0">
+      Uses {{ need }} AI request{{ '' if need == 1 else 's' }} ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).
+      Based on your <a href="/resume">résumé</a>{% if match %}, last run {{ match.at_ago }}{% endif %}.
+    </p>
+  </form>
+
+  {% if match %}
+    {% if match.note %}<div class="card muted">{{ match.note }}</div>{% endif %}
+    {% if match.titles %}<p class="muted" style="font-size:13px">Searched for: {{ match.titles|join(', ') }} &middot; looked at {{ match.considered }} live jobs</p>{% endif %}
+    {% for item, job, tracked in match.rows %}
+      <div class="card m">
+        <div class="top">
+          <span class="score {{ 'hi' if item.score >= 75 else ('mid' if item.score >= 50 else 'lo') }}" title="{{ 'How well the AI thinks you fit' if item.ai else 'Keyword overlap, not an AI judgement' }}">{{ item.score }}</span>
+          <div>
+            <a href="/jobs/{{ job.id }}"><b>{{ job.title }}</b></a>
+            <div class="muted">{{ job.company.name }}{% if job.location %} &middot; {{ job.location[:80] }}{% endif %}
+              {% if not item.ai %}&middot; keyword match{% endif %}</div>
+          </div>
+        </div>
+        <div><b>Why it fits:</b> {{ item.why }}</div>
+        {% if item.gaps %}<div class="gaps"><b>Possible gap:</b> {{ item.gaps }}</div>{% endif %}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn" href="/jobs/{{ job.id }}">View job</a>
+          <form method="post" action="/jobs/{{ job.id }}/interview" style="margin:0"><button class="ghost" type="submit">&#127908; Practice interview</button></form>
+          <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Tailor résumé</a>
+          <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Cover letter</a>
+          {% if tracked %}<a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; Tracked</a>
+          {% else %}<form method="post" action="/jobs/{{ job.id }}/track" style="margin:0"><input type="hidden" name="next" value="/match"><button class="ghost" type="submit">+ Track</button></form>{% endif %}
+        </div>
+      </div>
+    {% else %}
+      {% if not match.note %}<div class="card muted">None of those jobs are open any more. Run the match again.</div>{% endif %}
+    {% endfor %}
+    {% if match.rows %}<p class="muted" style="font-size:12px">Scores and explanations are written by an AI from your résumé and the posting text. Treat them as a starting point and read the posting before you apply.</p>{% endif %}
+  {% endif %}
+{% endif %}
+{% endblock %}

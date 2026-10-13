@@ -1,0 +1,230 @@
+{% extends "_plain.html" %}
+{% block title %}{{ PLATFORM }} — Jobs from company career pages{% endblock %}
+{% block body %}
+<style>
+  .band { background: #2563eb; color: #fff; width: 100vw; margin: 0 calc(50% - 50vw) 32px; padding: 8px 0 28px; }
+  .band .hero { text-align: center; padding: 40px 16px 8px; max-width: 820px; margin: 0 auto; }
+  .hero h1 { font-size: 2.35rem; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.03em; color: #fff; }
+  .hero .sub { font-size: 1.15rem; color: #e0ecff; margin-bottom: 8px; max-width: 36em; margin-left: auto; margin-right: auto; }
+  .hero .wedge { font-size: 1rem; color: #fff; font-weight: 600; margin-bottom: 22px; }
+  .hero .cta { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .hero .cta .btn-primary {
+    display: inline-block; background: #fff; color: #111928; font-weight: 700; font-size: 1.1rem;
+    padding: 14px 30px; border-radius: 8px; text-decoration: none; border: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+  }
+  .hero .cta .btn-primary:hover { background: #eff6ff; }
+  .hero .cta .btn-secondary {
+    display: inline-block; background: transparent; color: #fff; font-weight: 600;
+    padding: 8px 12px; text-decoration: underline; font-size: 0.95rem;
+  }
+  .hero .cta .btn-secondary:hover { color: #dbeafe; }
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 14px auto 4px; max-width: 760px; }
+  .chips a { border: 1px solid rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .12); color: #fff; border-radius: 999px; padding: 6px 14px; font-size: 0.9rem; text-decoration: none; }
+  .chips a:hover { background: rgba(255, 255, 255, .26); }
+  .chips a.hot { background: #fff; color: #1d4ed8; border-color: #fff; font-weight: 700; }
+  .chips a.hot:hover { background: #eff6ff; }
+  .chips-label { text-align: center; font-size: 0.85rem; color: #dbeafe; margin: 18px 0 0; }
+  .stats { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; margin: 24px 0 8px; font-size: 0.95rem; color: #dbeafe; }
+  .stats b { color: #fff; font-size: 1.05rem; display: block; }
+  .proof {
+    max-width: 820px; margin: 28px auto 8px; padding: 0 16px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  @media (max-width: 720px) { .proof { grid-template-columns: 1fr; } }
+  .proof .quote {
+    background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px;
+    font-size: 0.92rem; color: #374151; line-height: 1.45;
+  }
+  .proof .quote .who { margin-top: 10px; font-size: 0.8rem; color: #6b7280; font-weight: 600; }
+  .proof-bar {
+    text-align: center; color: #6b7280; font-size: 0.9rem; margin: 8px auto 24px; max-width: 640px;
+  }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 720px; margin: 28px auto; padding: 0 16px; }
+  @media (max-width: 640px) { .compare { grid-template-columns: 1fr; } }
+  .compare .card { padding: 20px; }
+  .compare .bad h3 { color: #b91c1c; }
+  .compare .good h3 { color: #15803d; }
+  .compare ul { margin: 8px 0 0; padding-left: 1.1em; color: #374151; line-height: 1.55; }
+  .showcase { max-width: 1040px; margin: 8px auto 48px; padding: 0 16px; text-align: center; }
+  .showcase h2 { font-size: 1.7rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .showcase .lead { color: #475569; max-width: 38em; margin: 0 auto 26px; font-size: 1.05rem; }
+  .shot { position: relative; border: 1px solid #94a3b8; border-radius: 14px; background: #fff; overflow: hidden; text-align: left;
+          box-shadow: 0 24px 60px rgba(37, 99, 235, .22), 0 6px 18px rgba(15, 23, 42, .12); }
+  .shot-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f1f5f9; border-bottom: 1px solid #cbd5e1; }
+  .shot-bar i { width: 11px; height: 11px; border-radius: 50%; display: block; background: #cbd5e1; }
+  .shot-bar i:nth-child(1) { background: #f87171; } .shot-bar i:nth-child(2) { background: #fbbf24; } .shot-bar i:nth-child(3) { background: #4ade80; }
+  .shot-url { flex: 1; margin-left: 10px; max-width: 420px; background: #fff; border: 1px solid #cbd5e1; border-radius: 999px;
+              padding: 3px 14px; font-size: .8rem; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shot-view { max-height: 560px; overflow: hidden; position: relative; }
+  .shot-view img { display: block; width: 100%; height: auto; }
+  .shot-view::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px;
+                      background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff); }
+  .stack { position: relative; padding-bottom: 230px; }
+  .stack .shot-1 .shot-view { max-height: 600px; }
+  /* the job page sits on top of the board: the board's header and top rows stay visible, the rest is covered */
+  .stack .shot-2 { position: absolute; top: 340px; bottom: 0; left: 16%; right: -10px; z-index: 2; display: flex; flex-direction: column;
+                   box-shadow: 0 30px 70px rgba(15, 23, 42, .34), 0 8px 20px rgba(15, 23, 42, .16); }
+  .stack .shot-2 .shot-view { flex: 1; max-height: none; }
+  .stack .shot-2 .shot-view img { width: 100%; height: auto; }
+  .shot-cap { margin-left: auto; background: #2563eb; color: #fff; font-size: .72rem; font-weight: 700; white-space: nowrap;
+              letter-spacing: .04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
+  @media (max-width: 720px) {
+    .stack { padding-bottom: 0; }
+    .stack .shot-2 { position: relative; top: auto; left: auto; right: auto; bottom: auto; margin-top: 16px; }
+    .stack .shot-2 .shot-view { max-height: 340px; }
+  }
+  .points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; text-align: left; }
+  .points div { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .points b { display: block; margin-bottom: 4px; color: #1d4ed8; }
+  .points span { color: #475569; font-size: .92rem; }
+  @media (max-width: 720px) { .points { grid-template-columns: 1fr; } .shot-view { max-height: 360px; } }
+  .mid-cta { text-align: center; margin: 8px 0 40px; }
+
+  .counter { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 4px 0 18px; padding: 8px 16px;
+             border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .14); color: #fff; border-radius: 999px; font-size: 0.95rem; }
+  .counter b { font-weight: 700; }
+  .section { max-width: 720px; margin: 0 auto 40px; padding: 0 16px; }
+  .section h2 { text-align: center; margin-bottom: 8px; }
+  .muted-center { text-align: center; color: #6b7280; margin-bottom: 20px; }
+  .faq details { border-bottom: 1px solid #cbd5e1; padding: 12px 0; }
+  .faq summary { cursor: pointer; font-weight: 600; }
+</style>
+
+{% if invited %}
+<div class="ok" style="max-width:820px;margin:16px auto;text-align:center">A friend invited you to {{ PLATFORM }}. <a href="/member/signup">Create your free account</a> to get started.</div>
+{% endif %}
+<div class="band">
+<div class="hero">
+  <h1>Jobs you can actually be hired for, wherever you are in the world.</h1>
+  <p class="sub">
+    Remote roles that say which countries they are open to, visa sponsorship the employer states in writing, and pay shown in US dollars.
+    All taken from the company's own career page in over 100 countries, so you apply straight to the hiring team.
+  </p>
+  <p class="wedge">Built for remote &amp; international job seekers &mdash; in the Americas, Europe, Asia, Africa and Oceania.</p>
+  <p class="chips-label">Start with a search for where you live</p>
+  <div class="chips">
+    <a href="/jobs?remote_from=WORLD">Work from anywhere</a>
+    <a href="/jobs?visa=yes" class="hot">Visa sponsorship offered</a>
+    <a href="/jobs?remote_from=US">Remote &middot; open to the US</a>
+    <a href="/jobs?remote_from=GB">Remote &middot; open to the UK</a>
+    <a href="/jobs?remote_from=CA">Remote &middot; open to Canada</a>
+    <a href="/jobs?remote_from=IN">Remote &middot; open to India</a>
+    <a href="/jobs?remote_from=BR">Remote &middot; open to Brazil</a>
+    <a href="/jobs?remote_from=PH">Remote &middot; open to the Philippines</a>
+    <a href="/jobs?remote_from=EU">Remote &middot; open to the EU</a>
+    <a href="/jobs?remote_from=LATAM">Remote &middot; open to Latin America</a>
+    <a href="/jobs?remote_from=APAC">Remote &middot; open to Asia-Pacific</a>
+    <a href="/jobs?remote_from=AFRICA">Remote &middot; open to Africa</a>
+    <a href="/jobs?paid=true&amp;sort=pay">Highest pay first</a>
+  </div>
+  {% if stats %}
+  <div class="counter" aria-label="Live job counts">
+    <span><b>{{ '{:,}'.format(stats.jobs) }}</b> open jobs</span>
+    <span><b>{{ '{:,}'.format(stats.companies) }}</b> companies</span>
+    {% if stats.updated %}<span>updated {{ stats.updated }}</span>{% endif %}
+  </div>
+  {% endif %}
+  <div class="cta">
+    <a class="btn-primary" href="/jobs">Browse free preview</a>
+    <a class="btn-secondary" href="/pricing">See pricing</a>
+  </div>
+  <div class="stats">
+    <div><b>Say who can apply</b>remote roles matched to your country</div>
+    <div><b>Fresh, not ghost</b>see when we last confirmed it open</div>
+    <div><b>Pay in dollars</b>or an honest &ldquo;no pay listed&rdquo;</div>
+    <div><b>Hourly alerts</b>be among the first to apply</div>
+  </div>
+</div>
+</div>
+
+<section class="showcase" aria-labelledby="showcase-title">
+  <h2 id="showcase-title">See every opening in one place</h2>
+  <p class="lead">Search live roles from company career pages, narrow them with filters, and see the pay and when each one was last confirmed open.</p>
+  <div class="stack">
+  <div class="shot shot-1">
+    <div class="shot-bar" aria-hidden="true"><i></i><i></i><i></i><span class="shot-url">{{ PLATFORM|lower }}/jobs</span><span class="shot-cap">Search &amp; filter</span></div>
+    <div class="shot-view">
+      <img src="/static/img/jobs-preview.png?v={{ CSS_V }}" width="1920" height="1290" loading="lazy"
+           alt="The {{ PLATFORM }} job board: a filter sidebar on the left and a list of job listings with pay and freshness on the right">
+    </div>
+  </div>
+  <div class="shot shot-2">
+    <div class="shot-bar" aria-hidden="true"><i></i><i></i><i></i><span class="shot-url">{{ PLATFORM|lower }}/jobs/&hellip;</span><span class="shot-cap">Open any job</span></div>
+    <div class="shot-view">
+      <img src="/static/img/job-detail-preview.png?v={{ CSS_V }}" width="1920" height="1470" loading="lazy"
+           alt="A job page on {{ PLATFORM }}: the company, location, pay and when the role was last confirmed open, then a readable description with headings">
+    </div>
+  </div>
+  </div>
+  <div class="points">
+    <div><b>Filters on the side</b><span>Country, level, job type, pay and who a remote role is open to.</span></div>
+    <div><b>Pay you can compare</b><span>Salaries shown in US dollars, or an honest &ldquo;no pay listed&rdquo;.</span></div>
+    <div><b>Confirmed open</b><span>Every card says when we last saw the role on the company&rsquo;s own page.</span></div>
+  </div>
+</section>
+
+<div class="proof">
+  <div class="quote">
+    “Applying on the company site just makes more sense. Less noise than LinkedIn, real openings.”
+    <div class="who">— Early seeker feedback</div>
+  </div>
+  <div class="quote">
+    “I only want remote roles that hire internationally. One search beat scrolling three job boards.”
+    <div class="who">— Remote job hunter</div>
+  </div>
+  <div class="quote">
+    “Preview was enough to see the difference. Paid to unlock filters and keep searching.”
+    <div class="who">— Monthly subscriber</div>
+  </div>
+</div>
+<p class="proof-bar">Jobs from company career pages · Direct apply · Preview free, unlock when ready</p>
+
+<div class="compare">
+  <div class="card bad">
+    <h3>LinkedIn / Indeed</h3>
+    <ul>
+      <li>Thousands of applicants on every post</li>
+      <li>Stale and evergreen listings</li>
+      <li>Recruiter spam and ghosting</li>
+      <li>Hard to see what companies actually posted</li>
+    </ul>
+  </div>
+  <div class="card good">
+    <h3>{{ PLATFORM }}</h3>
+    <ul>
+      <li>Jobs taken from company career sites</li>
+      <li>Apply on the employer’s own page</li>
+      <li>Freshness controls and like / dislike</li>
+      <li>Alerts when new roles match your search</li>
+    </ul>
+  </div>
+</div>
+
+<div class="mid-cta">
+  <a class="btn-primary" href="/jobs" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none">Browse free preview</a>
+  <a href="/pricing" style="display:inline-block;margin-left:12px;color:#1d4ed8;font-weight:700;padding:14px 18px;text-decoration:none">See plans &amp; pricing &rarr;</a>
+</div>
+
+
+
+<div class="section faq">
+  <h2>FAQ</h2>
+  <details>
+    <summary>How is this different from LinkedIn?</summary>
+    <p class="muted">We index jobs companies publish on their own career pages. You apply on their site — not into another social feed full of applicants.</p>
+  </details>
+  <details>
+    <summary>What are job alerts?</summary>
+    <p class="muted">Save a search (title, remote, location, filters). After you confirm your email, we send a digest when new matching roles appear.</p>
+  </details>
+  <details>
+    <summary>What if it is not for me?</summary>
+    <p class="muted">Email {{ SUPPORT_EMAIL }} within {{ REFUND_DAYS }} days of any payment and we refund it in full, no questions asked. <a href="/refunds">Read the refund promise</a>.</p>
+  </details>
+  <details>
+    <summary>Can I try before paying?</summary>
+    <p class="muted">Yes. Browse a free preview of live jobs, then unlock the full results when you subscribe.</p>
+  </details>
+</div>
+{% endblock %}

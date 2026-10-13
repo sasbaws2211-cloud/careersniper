@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    environment: {POSTGRES_USER: careersniper, POSTGRES_PASSWORD: "${DB_PASSWORD:?set DB_PASSWORD}", POSTGRES_DB: careersniper}
+    volumes: [pgdata:/var/lib/postgresql/data]
+  app:
+    build: .
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://careersniper:${DB_PASSWORD}@db:5432/careersniper
+      SECRET_KEY: "${SECRET_KEY:?set SECRET_KEY}"
+      BASE_DOMAIN: "${BASE_DOMAIN:?set BASE_DOMAIN}"
+    ports: ["8000:8000"]
+volumes:
+  pgdata:

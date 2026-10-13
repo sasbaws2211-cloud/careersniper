@@ -1,0 +1,63 @@
+{#- The site header, shared by every page layout. Expects: PLATFORM, and optionally org, memail, ai_on, request. -#}
+{% macro link(href, label, path) -%}
+  {%- set on = path == href or (href != "/" and path.startswith(href ~ "/")) -%}
+  <a href="{{ href }}" class="nav-link{% if on %} active{% endif %}"{% if on %} aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+{% set path = request.url.path if request is defined and request else "" %}
+{% set signed_in = memail is defined and memail %}
+<header class="top">
+  <div class="wrap nav">
+    <a href="/" class="brand">
+      <img src="/static/favicon.svg" alt="" width="28" height="28">
+      <span>{{ org.name if org is defined and org else PLATFORM }}</span>
+    </a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Open the menu">
+    <label for="nav-toggle" class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></label>
+    <nav class="nav-links" aria-label="Main">
+      {{ link("/", "Home", path) }}
+      {% if signed_in %}
+        {{ link("/following", "Following", path) }}
+        {{ link("/tracker", "Tracker", path) }}
+        {{ link("/saved", "Liked", path) }}
+        {% if ai_on %}
+        <details class="menu">
+          <summary class="nav-link{% if path.startswith(('/match', '/letters', '/interview', '/tailored')) %} active{% endif %}">AI tools <span class="caret" aria-hidden="true"></span></summary>
+          <div class="menu-panel">
+            <a href="/match">Job match</a>
+            <a href="/letters">Cover letters</a>
+            <a href="/interview">Interview practice</a>
+          </div>
+        </details>
+        {% endif %}
+      {% endif %}
+    </nav>
+    <div class="nav-actions">
+      {% if signed_in %}
+        <details class="menu menu-right">
+          <summary class="avatar" aria-label="Your account">{{ memail[0]|upper }}</summary>
+          <div class="menu-panel">
+            <div class="menu-who">Signed in as<b>{{ memail }}</b></div>
+            <a href="/account">Account</a>
+            <a href="/referrals">Invite friends</a>
+            <a href="/pricing">Plans &amp; billing</a>
+            <form method="post" action="/member/logout"><button type="submit">Log out</button></form>
+          </div>
+        </details>
+      {% else %}
+        {# one button: a returning visitor (this browser has signed up or in before) is offered Sign in, a new visitor Sign up #}
+        {% if request is defined and request and request.cookies.get('cs_member') %}
+        <a class="btn nav-cta" href="/member/login">Sign in</a>
+        {% else %}
+        <a class="btn nav-cta" href="/member/signup">Sign up</a>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</header>
+{% if request is defined and request and request.session.get('mid') and not request.session.get('mv') %}
+<div class="wrap"><div class="card" style="margin-top:12px;border-color:#fcd34d;background:#fffbeb;color:#78350f;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+  <span><b>Confirm your email.</b> We sent a link to {{ memail }}. Your paid plan and alerts only work once it is confirmed.</span>
+  <form method="post" action="/account/resend-verification" style="margin:0"><button type="submit" class="ghost">Resend the email</button></form>
+</div></div>
+{% endif %}
+<script src="/static/nav.js?v={{ CSS_V }}" defer></script>

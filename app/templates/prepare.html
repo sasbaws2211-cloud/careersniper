@@ -1,0 +1,28 @@
+{% extends "_tenant.html" %}
+{% block title %}Prepare your application · {{ job.title }}{% endblock %}
+{% block body %}
+<p><a href="/jobs/{{ job.id }}">&larr; {{ job.title }} at {{ job.company.name }}</a></p>
+<div class="hero"><h1>Prepare your application</h1>
+  <div class="muted">{{ plan.done }} of {{ plan.total }} steps done. Do them in this order: each one builds on the one before.</div></div>
+{% if credits %}<p class="muted" style="font-size:13px">{% if credits.trial %}Free trial: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} AI requests left; after that the AI steps need a paid plan.{% else %}AI requests left today: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }}.{% endif %}</p>{% endif %}
+
+{% for s in plan.rows %}
+<div class="card" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap{% if plan.next == s.key %};border-color:var(--brand){% endif %}">
+  <div style="flex:1;min-width:220px">
+    <b>{{ loop.index }}. {{ s.title }}</b>
+    {% if s.done %}<span class="tag" style="background:#dcfce7;color:#166534">Done</span>{% elif plan.next == s.key %}<span class="tag">Next</span>{% endif %}
+    <div class="muted" style="font-size:.9rem">{{ s.detail }}</div>
+    {% if s.cost and not s.done %}<div class="muted" style="font-size:12px">{{ s.cost }} AI request{{ '' if s.cost == 1 else 's' }}</div>{% endif %}
+  </div>
+  <div>
+    {% if s.key == 'interview' and not s.href %}
+      {% if ai_on %}<form method="post" action="/jobs/{{ job.id }}/interview" style="margin:0"><button class="ghost" type="submit">Start practice</button></form>{% endif %}
+    {% elif s.key == 'apply' and not has_access %}
+      <a class="btn" href="/checkout?plan=monthly&next=/jobs/{{ job.id }}/prepare">Unlock to apply</a>
+    {% elif s.href %}
+      <a class="btn{% if s.done or plan.next != s.key %} ghost{% endif %}" href="{{ s.href }}"{% if s.done or plan.next != s.key %} style="background:transparent;color:inherit;border:1px solid #94a3b8"{% endif %}>{{ 'Open' if s.done else 'Start' }}</a>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

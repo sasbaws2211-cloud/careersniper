@@ -1,0 +1,49 @@
+{% extends "_plain.html" %}
+{% block title %}Account · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Your account</h1></div>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if msg == 'sent' %}<div class="ok">Confirmation email sent.</div>{% elif msg %}<div class="ok">{{ msg }}</div>{% endif %}
+{% if billing_msg %}<div class="ok">{{ billing_msg }}</div>{% endif %}
+
+<div class="card">
+  <h2>Subscription</h2>
+  {% if sub and has_access %}
+    <p>
+      <b style="text-transform:capitalize">{{ sub.plan }}</b>
+      · status <span class="tag">{{ sub.status }}</span>
+      · access until {{ sub.current_period_end.strftime('%Y-%m-%d') if sub.current_period_end else '—' }}
+    </p>
+    {% if sub.status == 'active' and sub.interval not in ('lifetime', 'once') and billing_on %}
+    <form method="post" action="/account/billing/cancel"
+          onsubmit="return confirm('Cancel future charges? You keep access until the end of the paid period.')">
+      <button class="ghost">Cancel subscription</button>
+    </form>
+    {% endif %}
+  {% elif sub and not has_access %}
+    <p class="muted">Your {{ sub.plan }} plan ended on {{ sub.current_period_end.strftime('%Y-%m-%d') if sub.current_period_end else '—' }}.</p>
+    <a class="btn" href="/pricing">Renew access</a>
+  {% else %}
+    <p class="muted">No active plan. You're on the free preview.</p>
+    <a class="btn" href="/pricing">See plans</a>
+  {% endif %}
+</div>
+
+<div class="card"><h2>Email</h2><p>{{ member.email }}
+{% if member.verified %}<span class="tag">Confirmed</span>{% else %}<span class="tag" style="background:#fef3c7;color:#92400e">Not confirmed</span>{% endif %}</p>
+{% if not member.verified %}<p class="muted">Confirm your email to manage your job alerts here.</p>
+<form method="post" action="/account/resend-verification"><button class="ghost">Resend confirmation email</button></form>{% endif %}</div>
+
+<div class="card"><h2>Job alerts</h2>
+{% if not member.verified %}<p class="muted">Confirm your email to see your alerts.</p>
+{% else %}<table>{% for a in alerts %}<tr><td>{{ a.q or 'All new jobs' }}{% if a.loc %} in {{ a.loc }}{% endif %}{% if a.remote %}, remote{% endif %}</td><td class="muted">{{ a.frequency }}</td>
+<td><form method="post" action="/account/alerts/{{ a.id }}/unsubscribe" style="margin:0"><button class="ghost">Unsubscribe</button></form></td></tr>
+{% else %}<tr><td class="muted">No alerts yet. Use "Email me new jobs" on the job list.</td></tr>{% endfor %}</table>
+<form method="post" action="/alerts/from-resume" style="margin-top:12px"><button class="ghost" type="submit">Alert me about jobs that match my résumé</button>
+<span class="muted" style="font-size:13px"> One daily email per job title we read from it.</span></form>{% endif %}</div>
+
+<div class="card"><h2>Invite friends</h2><p class="muted">Get a free week for every friend who subscribes through your link.</p><a class="btn" href="/referrals">Get my link</a></div>
+
+<div class="card"><h2>Delete account</h2><p class="muted">Deletes your account and everything attached to it: saved jobs, résumé, tracker, AI documents, followed companies and job alerts. Your subscription is not refunded by deleting the account.</p>
+<form method="post" action="/account/delete" onsubmit="return confirm('Delete your account?')" style="display:flex;gap:8px"><input name="password" type="password" placeholder="Confirm your password" required style="flex:1"><button class="danger">Delete</button></form></div>
+{% endblock %}

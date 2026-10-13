@@ -1,0 +1,37 @@
+{% extends "_tenant.html" %}
+{% block title %}Tailor my résumé · {{ job.title }} · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<p><a href="/jobs/{{ job.id }}">&larr; Back to the job</a></p>
+<div class="hero"><h1>Tailor my résumé</h1>
+  <div class="muted">{{ job.title }} &middot; {{ job.company.name }}</div></div>
+
+{% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}{% if need_resume %} <a href="/resume">Add my résumé</a>{% endif %}</div>{% endif %}
+
+{% if not ai_on %}
+  <div class="card muted">Résumé tailoring is not available right now. Please check back soon.</div>
+{% else %}
+  {% if existing %}
+  <div class="card">You already tailored a résumé for this job on {{ existing.created_at.strftime('%d %b %Y') }}.
+    <a href="/tailored/{{ existing.id }}">Open it</a> or make a new one below.</div>
+  {% endif %}
+  <form method="post" action="/jobs/{{ job.id }}/tailor" class="card">
+    <p style="margin-top:0">We read what this job asks for, then <b>rewrite your résumé for it</b>: a new summary, a key-qualifications section that answers the
+      job's requirements, every role's bullets rewritten in the job's language and ordered by relevance, and your skills regrouped to match.</p>
+    <p class="muted" style="font-size:0.92rem">It is built only from facts in <b>your own</b> résumé: we will not add skills, jobs, numbers or qualifications you do not list.
+      Where a detail only you know would make a line stronger, you get a short <code>[ADD: ...]</code> prompt to fill in. Anything the job wants that your résumé
+      does not show is listed as a gap, with a line-by-line view of what is covered.</p>
+    <label>Anything you want it to stress? <span class="muted">(optional)</span>
+      <textarea name="emphasis" rows="3" maxlength="500" style="width:100%;box-sizing:border-box" placeholder="e.g. put my payments work first">{{ emphasis }}</textarea></label>
+    <p class="muted" style="font-size:13px">Uses AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left{% if credits.trial %} in your free trial{% else %} today{% endif %}). Your <a href="/resume">saved résumé</a> stays unchanged.</p>
+    <button type="submit" id="tailor-go">Tailor my résumé</button>
+    <p id="tailor-wait" class="muted" style="display:none;margin:10px 0 0" role="status">Reading the job and writing your résumé. A full rewrite with a fact-check takes one to three minutes: please keep this page open.</p>
+  </form>
+  <script>
+    document.querySelector('form[action$="/tailor"]').addEventListener('submit', function () {
+      var b = document.getElementById('tailor-go');
+      b.disabled = true; b.textContent = 'Writing your résumé…';
+      document.getElementById('tailor-wait').style.display = 'block';
+    });
+  </script>
+{% endif %}
+{% endblock %}

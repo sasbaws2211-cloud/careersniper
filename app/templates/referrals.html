@@ -1,0 +1,40 @@
+{% extends "_tenant.html" %}
+{% block title %}Invite friends · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Invite a friend, get a free week</h1>
+  <div class="muted">Every friend who subscribes through your link earns you {{ reward_days }} free days</div></div>
+
+<div class="card">
+  <b>Your link</b>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <input id="reflink" readonly value="{{ link }}" style="flex:1;min-width:220px" onclick="this.select()">
+    <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('reflink').value).then(()=>{this.textContent='Copied'})">Copy</button>
+  </div>
+</div>
+
+<div class="stats4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0">
+  <div class="card" style="margin:0"><b style="font-size:1.5rem">{{ s.signed_up }}</b><br><span class="muted">friends signed up</span></div>
+  <div class="card" style="margin:0"><b style="font-size:1.5rem">{{ s.rewarded }}</b><br><span class="muted">subscribed</span></div>
+  <div class="card" style="margin:0"><b style="font-size:1.5rem">{{ s.days }}</b><br><span class="muted">free days earned</span></div>
+</div>
+
+<div class="card">
+  <b>How it works</b>
+  <ul style="margin:6px 0 0">
+    <li>Share your link. Your friend signs up through it.</li>
+    <li>When they make their first paid purchase, we add {{ reward_days }} days to your access. If you have no plan, you get a free week.</li>
+    <li>You can earn this up to {{ s.max }} times ({{ s.left }} left). There is nothing to claim: it happens automatically.</li>
+    <li>It does not count if you refer yourself, and it is taken back if your friend is refunded.</li>
+  </ul>
+</div>
+
+<h2 style="font-size:1.1rem">Your friends</h2>
+{% for f in s.friends %}
+<div class="card" style="display:flex;justify-content:space-between;gap:12px">
+  <span>{{ f.email }} <span class="muted">&middot; joined {{ f.at.strftime('%d %b %Y') }}</span></span>
+  <span class="tag">{{ {'signed_up': 'signed up', 'rewarded': 'subscribed: +' ~ reward_days ~ ' days', 'withdrawn': 'refunded', 'capped': 'limit reached', 'skipped': 'no reward'}.get(f.status, f.status) }}</span>
+</div>
+{% else %}
+<div class="card muted">No one has signed up through your link yet.</div>
+{% endfor %}
+{% endblock %}

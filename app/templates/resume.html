@@ -1,0 +1,84 @@
+{% extends "_tenant.html" %}
+{% block title %}Your résumé · {{ PLATFORM }}{% endblock %}
+{% block body %}
+<div class="hero"><h1>Your résumé</h1>
+  <div class="muted">Upload it once. We read your job titles and level from it, so the board shows jobs that fit you, and the AI tools use it.</div></div>
+
+{% if request.query_params.get('welcome') %}
+<div class="card" style="border-color:var(--brand)">
+  <b>Welcome. Three steps to your first matches:</b>
+  <ol style="margin:8px 0 0 18px;padding:0">
+    <li><b>Upload your résumé</b> below. We only keep the text.</li>
+    <li>Check the job titles we read from it.</li>
+    <li>Open <a href="{{ request.query_params.get('next') or '/jobs' }}">your jobs</a> and turn on <a href="/account">résumé alerts</a>.</li>
+  </ol>
+</div>
+{% endif %}
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+{% if saved %}<div class="ok">
+  {% if uploaded %}Uploaded and saved.{% else %}Saved.{% endif %}
+  {% if profile %}Your jobs are now filtered to <b>{{ profile.titles[:3]|map('title')|join(', ') }}</b>. <a href="{{ request.query_params.get('next') or '/jobs' }}">See jobs that fit you &rarr;</a>
+  {% else %}<a href="/match">Find my matches &rarr;</a>{% endif %}
+</div>{% endif %}
+{% if profile_note %}<div class="err">{{ profile_note }}</div>{% endif %}
+{% if profile_saved %}<div class="ok">Your job titles were updated. <a href="/jobs">See jobs that fit you &rarr;</a></div>{% endif %}
+
+<form method="post" action="/resume/upload" enctype="multipart/form-data" class="card">
+  <label for="file"><b>Upload your résumé</b>
+    <span class="muted">(PDF, Word .docx or text, up to {{ max_file_mb }} MB)</span></label>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
+    <input id="file" name="file" type="file" accept="{{ accept }}" required style="flex:1;min-width:200px">
+    <button type="submit">Upload and use this résumé</button>
+  </div>
+  <p class="muted" style="font-size:13px;margin-bottom:0">We keep only the text, not the file. You can check and edit the text below.</p>
+</form>
+
+{% if profile %}
+<div class="card">
+  <h2 style="margin-top:0">What we read from your résumé</h2>
+  <p class="muted" style="margin-top:0">{{ profile.summary or "" }}</p>
+  <p style="margin:6px 0">
+    {% for t in profile.titles %}<span class="tag">{{ t|title }}</span>{% endfor %}
+    {% if profile.seniority %}<span class="tag">{{ levels.get(profile.seniority, profile.seniority) }}</span>{% endif %}
+    {% if profile.years %}<span class="tag">{{ profile.years }} yr{{ '' if profile.years == 1 else 's' }}</span>{% endif %}
+  </p>
+  {% if profile.skills %}<p class="muted" style="font-size:13px;margin:6px 0">Skills: {{ profile.skills[:10]|join(', ') }}</p>{% endif %}
+  <details style="margin-top:10px">
+    <summary style="cursor:pointer"><b>Not right? Change the job titles we look for</b></summary>
+    <form method="post" action="/resume/profile/edit" style="margin-top:10px">
+      <label for="titles">Job titles <span class="muted">(one per line, up to 6)</span></label>
+      <textarea id="titles" name="titles" rows="4" style="width:100%;box-sizing:border-box;font-family:inherit">{{ profile.titles|join('\n') }}</textarea>
+      <label for="seniority">Level</label>
+      <select id="seniority" name="seniority">
+        <option value="">Any level</option>
+        {% for k, v in levels.items() %}<option value="{{ k }}" {{ 'selected' if profile.seniority == k }}>{{ v }}</option>{% endfor %}
+      </select>
+      <p><button type="submit">Save these titles</button></p>
+    </form>
+  </details>
+</div>
+{% elif has_resume and ai_on %}
+<form method="post" action="/resume/profile" class="card">
+  <p style="margin-top:0">We have your résumé but have not read your job titles from it yet.</p>
+  <button type="submit">Read my résumé again</button>
+</form>
+{% endif %}
+
+<form method="post" action="/resume" class="card">
+  <label for="text"><b>Résumé text</b> <span class="muted">&mdash; or paste it here</span><br>
+    <span class="muted">(plain text, {{ '{:,}'.format(min_chars) }} to {{ '{:,}'.format(max_chars) }} characters)</span></label>
+  <textarea id="text" name="text" rows="22" maxlength="{{ max_chars + 2000 }}" required style="width:100%;box-sizing:border-box;font-family:inherit;margin-top:8px"
+            placeholder="Paste the text of your résumé or CV here: your roles, dates, skills, education.">{{ text }}</textarea>
+  <p class="muted" style="font-size:13px">
+    When you use an AI tool, the text of your résumé and the jobs involved are sent to {{ provider }} to produce the answer.
+    We keep your résumé only so you do not have to paste it again, and you can delete it below at any time.
+  </p>
+  <button type="submit">Save résumé</button>
+</form>
+
+{% if text %}
+<form method="post" action="/resume/delete" onsubmit="return confirm('Delete your résumé and any match results made from it?')">
+  <button class="ghost" type="submit">Delete my résumé</button>
+</form>
+{% endif %}
+{% endblock %}

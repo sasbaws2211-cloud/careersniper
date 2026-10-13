@@ -1,0 +1,12 @@
+{% extends "_tenant.html" %}{% block title %}Sign up · {{ org.name if org is defined and org else PLATFORM }}{% endblock %}{% block body %}
+<div class="card" style="max-width:420px;margin:40px auto"><h2>Create your account</h2>
+<p class="muted">Save jobs, track where you've applied, and manage your alerts.</p>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<form method="post"><input type="hidden" name="next" value="{{ next }}">
+<input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<label>Email<input name="email" type="email" required autofocus></label>
+<label>Password (8+ characters)<input name="password" type="password" minlength="8" maxlength="72" required></label>
+<p><button>Create account</button></p></form>
+<p class="muted" style="font-size:13px">Tip: every friend you invite who subscribes earns you a free week.</p>
+<p class="muted">Already have an account? <a href="/member/login?next={{ next|urlencode }}">Sign in</a></p></div>
+{% endblock %}

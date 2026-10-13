@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block content %}
+<h1>Companies and scraping</h1>
+
+<details class="card"><summary><b>+ Add a company</b></summary>
+  <form method="post" action="/companies/add" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">
+      <label>Name<input name="name" required maxlength="200" placeholder="Acme"></label>
+      <label>Job board system<select name="ats">{% for a in ats_list %}<option value="{{ a }}">{{ a }}</option>{% endfor %}</select></label>
+      <label>Board token<input name="token" required maxlength="200" placeholder="acme  (or the careers-page address)"></label>
+    </div>
+    <p class="muted small">The token is the last part of the company's careers-page address, for example <code>boards.greenhouse.io/<b>acme</b></code>. It is scraped straight away so you can see at once if it is right.</p>
+    <button type="submit">Add and scrape</button>
+  </form>
+</details>
+
+<form method="get" class="filters">
+  <input name="q" value="{{ q }}" placeholder="Search name or token" aria-label="Search">
+  <select name="flt" aria-label="Show">
+    {% for v, l in [('', 'All companies'), ('errors', 'With a scrape error'), ('stale', 'Not scraped for 12 hours'), ('never', 'Never scraped'), ('inactive', 'Switched off')] %}<option value="{{ v }}" {{ 'selected' if flt == v }}>{{ l }}</option>{% endfor %}
+  </select>
+  <button type="submit">Filter</button>{% if q or flt %}<a class="btn ghost" href="/companies">Clear</a>{% endif %}
+</form>
+
+<div class="card flush"><table>
+  <thead><tr><th>Company</th><th>Board</th><th>Live jobs</th><th>Last scrape</th><th>Status</th><th></th></tr></thead>
+  {% for r in rows %}{% set c = r.company %}
+  <tr>
+    <td><b>{{ c.name }}</b></td>
+    <td class="muted">{{ c.ats }}/{{ c.board_token }}</td>
+    <td>{{ r.live }}</td>
+    <td class="muted">{{ c.last_scraped|ago }}</td>
+    <td>{% if not c.active %}<span class="tag">off</span>{% elif c.last_error %}<span class="tag err" title="{{ c.last_error }}">error</span> <span class="muted small">{{ c.last_error[:60] }}</span>{% else %}<span class="tag ok">ok</span>{% endif %}</td>
+    <td class="actions">
+      <form method="post" action="/companies/{{ c.id }}/scrape"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">Scrape now</button></form>
+      <form method="post" action="/companies/{{ c.id }}/toggle" data-confirm="{{ 'Switch this company off? Its jobs disappear from the site.' if c.active else 'Switch it back on?' }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">{{ 'Switch off' if c.active else 'Switch on' }}</button></form>
+    </td>
+  </tr>
+  {% else %}<tr><td colspan="6" class="muted">No companies match.</td></tr>{% endfor %}
+</table></div>
+{{ pager(page, pages, total, {'q': q, 'flt': flt}) }}
+{% endblock %}
