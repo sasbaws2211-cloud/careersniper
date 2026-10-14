@@ -122,7 +122,7 @@ ALLOW_BILLING_OFF = os.getenv("ALLOW_BILLING_OFF", "0") == "1"
 
 # Money-back promise shown on the pricing, checkout and refund pages. Refunds are issued by hand in the Paystack dashboard.
 REFUND_DAYS = int(os.getenv("REFUND_DAYS", "7"))
-SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@careersniper.com")   # must be a mailbox you read: the refund promise depends on it
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@careersniper.site")   # must be a mailbox you read: the refund promise depends on it
 
 # ---- Email ----
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
