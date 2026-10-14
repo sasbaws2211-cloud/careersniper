@@ -22,27 +22,45 @@
   .ob-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
   .ob-options label.choice {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
-    cursor: pointer; background: #fff; transition: border-color .15s, background .15s;
-    margin: 0; color: inherit; font-size: 0.95rem;
+    min-height: 48px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px;
+    cursor: pointer; background: #fff;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+    margin: 0; color: var(--text); font-size: 0.95rem; line-height: 1.4;
   }
   .ob-options label.choice:hover { border-color: var(--brand); }
   .ob-options label.choice:has(input:checked) {
     border-color: var(--brand); background: color-mix(in srgb, var(--brand) 8%, #fff);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 18%, transparent);
   }
-  .ob-options label.choice input { margin: 0; flex: none; }
+  .ob-options label.choice:focus-within {
+    outline: 3px solid color-mix(in srgb, var(--brand) 24%, transparent);
+    outline-offset: 2px;
+  }
+  .ob-options label.choice input {
+    appearance: auto; width: 18px; height: 18px; padding: 0; margin: 0;
+    border: 0; background: transparent; flex: 0 0 18px;
+    accent-color: var(--brand);
+  }
 
   .ob-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .ob-chips label.chip {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
-    cursor: pointer; background: #fff; font-size: 0.9rem; margin: 0; color: inherit;
+    min-height: 40px; padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px;
+    cursor: pointer; background: #fff; font-size: 0.9rem; margin: 0; color: var(--text);
+    transition: border-color .15s, background .15s, color .15s;
   }
   .ob-chips label.chip:has(input:checked) {
     border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, #fff);
     color: var(--brand); font-weight: 600;
   }
-  .ob-chips label.chip input { display: none; }
+  .ob-chips label.chip:focus-within {
+    outline: 3px solid color-mix(in srgb, var(--brand) 24%, transparent);
+    outline-offset: 2px;
+  }
+  .ob-chips label.chip input {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
 
   .ob-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
   .ob-nav .btn-back { background: transparent; color: var(--text); border: 1px solid var(--line); }
@@ -72,6 +90,12 @@
 
   .ob-skip { text-align: center; margin-top: 18px; }
   .ob-skip a { color: var(--muted); font-size: 0.9rem; }
+  @media (max-width: 480px) {
+    .ob-wrap { margin-bottom: 32px; }
+    .ob-nav { margin-top: 22px; }
+    .ob-nav > button { min-height: 44px; }
+    .ob-nav > [data-next] { min-width: 120px; }
+  }
 </style>
 
 <div class="ob-wrap">
