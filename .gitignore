@@ -4,3 +4,4 @@ migrations/versions/
 tests/
 venv/ 
 .env".env" 
+".env" 
