@@ -16,6 +16,4 @@ itsdangerous==2.2.0
 bcrypt==5.0.0
 httpx==0.28.1
 python-multipart==0.0.32
-cryptography==50.0.1   
-pytest==9.1.1
-pip-audit
+cryptography==50.0.1

@@ -441,6 +441,7 @@ DETAIL = {
 }
 # Fields the detail call knows better than the list: once a job has its text, list scrapes must not overwrite them
 ENRICHED_KEYS = {"workday": ("location", "remote", "employment_type", "countries", "job_type", "workplace", "remote_regions")}
+SCRAPE_BATCH_SIZE = config.SCRAPE_BATCH_SIZE
 
 
 def fetch_jobs(ats: str, token: str, client: httpx.Client | None = None, light: bool = False) -> JobList:
@@ -518,6 +519,7 @@ async def scrape_company(db: AsyncSession, company: Company, client: httpx.Clien
         if not r.active:
             k = ((r.title or "").strip().lower(), (r.location or "").strip().lower())
             closed[k] = max(closed.get(k, 0), (r.repost_count or 0) + 1)
+    pending_new: list[Job] = []
     for d in jobs:
         d["company_name"] = company.name
         clip(Job, d)
@@ -542,8 +544,17 @@ async def scrape_company(db: AsyncSession, company: Company, client: httpx.Clien
         else:
             d["repost_count"] = closed.get(((d.get("title") or "").strip().lower(), (d.get("location") or "").strip().lower()), 0)
             row = Job(company_id=company.id, first_seen=now, last_seen=now, **d)
-            db.add(row)
+            pending_new.append(row)
             existing[d["external_id"]] = row
+        if len(pending_new) >= SCRAPE_BATCH_SIZE:
+            db.add_all(pending_new)
+            await db.flush()
+            await db.commit()
+            pending_new.clear()
+    if pending_new:
+        db.add_all(pending_new)
+        await db.flush()
+        await db.commit()
     if company.ats in DETAIL:
         await asyncio.to_thread(_fill_details, company, existing, seen, client)
     if not partial:

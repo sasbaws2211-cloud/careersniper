@@ -9,6 +9,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres@localhos
 DB_POOL = os.getenv("DB_POOL", "")                                 # "null" = no pooling (tests)
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+SCRAPE_BATCH_SIZE = int(os.getenv("SCRAPE_BATCH_SIZE", "100"))
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
 PLATFORM_NAME = os.getenv("PLATFORM_NAME", "CareerSniper")
 PLATFORM_TAGLINE = os.getenv("PLATFORM_TAGLINE", "Find jobs not on LinkedIn/Indeed")
