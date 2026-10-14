@@ -21,14 +21,14 @@ async engine (asyncpg), and the schema is managed with Alembic.
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env              # set DATABASE_URL to your PostgreSQL database (postgresql+asyncpg://user:pw@host/db)
+cp .env.example .env              # set DATABASE_URL to your PostgreSQL database 
 alembic upgrade head              # create / update the tables
 python -m app.cli scrape          # seeds employers and pulls jobs
 uvicorn app.main:app --port 8020
 ```
 
 Changing a table: edit `app/models.py`, run `alembic revision --autogenerate -m "what changed"`, read the generated file, then `alembic upgrade head`.
-Moving data from the old SQLite file: `python -m app.cli migrate sqlite:///./careersniper.db postgresql://user:pw@host/db` (the target must already be migrated).
+Moving data from the old SQLite file: `python -m app.cli migrate
 
 - Marketing homepage: http://localhost:8020/
 - Job search (preview): http://localhost:8020/jobs
