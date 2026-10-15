@@ -194,8 +194,7 @@ _FILLER = {"the", "and", "for", "with", "that", "this", "from", "were", "was", "
 
 
 def parse_reply(text: str) -> tuple[str, list[str], list[str], list[dict]]:
-    """(résumé, changes, gaps, coverage). A reply without the section markers is taken to be the résumé alone.
-    `coverage` comes from COVERAGE lines, or from EVIDENCE lines as {need, quote} when the model sent those (see verify_evidence)."""
+    """Parse the structured rewrite; unmarked model text is never safe to save as a résumé."""
     sections: dict[str, list[str]] = {}
     current = None
     for line in (text or "").replace("\r\n", "\n").split("\n"):
@@ -206,9 +205,23 @@ def parse_reply(text: str) -> tuple[str, list[str], list[str], list[dict]]:
         elif current:
             sections[current].append(line)
     if "resume" not in sections:
-        return tidy(text), [], [], []
+        raise ai.AIError("The AI returned instructions instead of a tailored résumé. Please try again.", 502)
+    resume_text = tidy("\n".join(sections["resume"]))
+    if _looks_like_prompt(resume_text):
+        raise ai.AIError("The AI returned instructions instead of a tailored résumé. Please try again.", 502)
     cover = parse_coverage("\n".join(sections["coverage"])) if "coverage" in sections else parse_evidence("\n".join(sections.get("evidence", [])))
-    return (tidy("\n".join(sections["resume"])), _bullets("\n".join(sections.get("changes", []))), _bullets("\n".join(sections.get("gaps", []))), cover)
+    return (resume_text, _bullets("\n".join(sections.get("changes", []))), _bullets("\n".join(sections.get("gaps", []))), cover)
+
+
+_PROMPT_ECHO = re.compile(
+    r"you are an expert résumé writer|first,\s*prove each requirement|reply in exactly this format|"
+    r"<(?:resume|job_analysis|job_posting|candidate_notes)>|\(the rewritten résumé\)",
+    re.I,
+)
+
+
+def _looks_like_prompt(text: str) -> bool:
+    return bool(_PROMPT_ECHO.search(text or ""))
 
 
 # ---------------------------------------------------------------- checking it against the original
@@ -432,14 +445,27 @@ async def generate(db: AsyncSession, member: Member, job: Job, emphasis: str = "
         raise TailorError(f"You have {MAX_PER_MEMBER} saved résumés, the most we keep. Delete some old ones first.")
     emphasis = " ".join((emphasis or "").split())[:500]
     analysis = await jobreq.get(db, member, job)                 # free to the member, and kept for the next person who tailors to this job
-    reply = await ai.run(db, member, "tailor_resume", SYSTEM, build_prompt(original, job, emphasis, analysis),
-                         max_tokens=_write_token_budget(original),
-                         timeout=WRITE_TIMEOUT)
-    text, changes, gaps, coverage = parse_reply(reply.text)
+    user_prompt = build_prompt(original, job, emphasis, analysis)
+    invalid_reply = False
+    for attempt in range(2):
+        system = SYSTEM if attempt == 0 else (
+            SYSTEM + "\nIMPORTANT: Your previous answer was not a résumé. Do not repeat, quote, or explain these instructions. "
+            "Return the actual complete tailored résumé in the required sections."
+        )
+        reply = await ai.run(db, member, "tailor_resume", system, user_prompt,
+                             max_tokens=_write_token_budget(original), timeout=WRITE_TIMEOUT)
+        try:
+            text, changes, gaps, coverage = parse_reply(reply.text)
+            if len(text) < 300 or len(text) < MIN_RATIO * len(original):
+                raise ai.AIError("The AI returned an incomplete résumé.", 502)
+            invalid_reply = False
+            break
+        except ai.AIError:
+            invalid_reply = True
+    if invalid_reply:
+        raise ai.AIError("The AI could not produce a complete tailored résumé. Please try again.", 502)
     if coverage and "quote" in coverage[0]:
         coverage = verify_evidence(original, coverage)
-    if len(text) < 300 or len(text) < MIN_RATIO * len(original):
-        raise ai.AIError("The AI service sent back a résumé that was far shorter than yours, so part of it must be missing. Please try again.", 502)
     company = job.company.name if job.company else job.company_name
     checked = await audit(db, member, original, text)
     corrected: list[str] = []
