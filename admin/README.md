@@ -44,6 +44,7 @@ database and read by the public site, so **a change reaches the site within abou
 server's environment variable (`AI_PROVIDER`, `AI_MODEL`, `ANTHROPIC_API_KEY` ...), so an existing setup keeps working.
 
 - **Master switch**: untick "AI features are on" to hide every AI feature on the site at once.
+- **Longest answer**: résumé tailoring scales its requested output up for longer résumés, but this setting is still a hard ceiling; 6,000 tokens is the default ceiling for complete rewrites.
 - **Test these values** sends one tiny real request using what is in the form, saved or not, so you find a wrong key or model name before customers do. It saves nothing.
 - **The API key is stored encrypted** and is never shown again (only that one is saved and its last four characters). It is never written to the audit log.
   The public site and this app must run with the **same `SECRET_KEY`** (or set the same `SETTINGS_SECRET` in both): the key is encrypted with it. If they differ the

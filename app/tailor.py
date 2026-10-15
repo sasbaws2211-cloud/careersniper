@@ -17,6 +17,7 @@ The member sees all of it next to the editable text. The code cannot prove a ré
 """
 from __future__ import annotations
 
+import math
 import re
 
 from sqlalchemy import func, select
@@ -36,7 +37,8 @@ MAX_PLACEHOLDERS = 8
 WRITE_TIMEOUT = 170                 # seconds: writing a whole résumé takes a slow model a minute or more
 REPAIR_FROM = 2                     # unsupported statements (from the reading) at which the rewrite is corrected, not just reported
 REPAIR_WORDS = 4                    # ...or foreign words the word check finds, with no statement flagged
-WRITE_TOKENS = 2800                 # a full rewrite plus its notes; AI_MAX_OUTPUT_TOKENS still caps what the provider is asked for
+WRITE_TOKENS = 2800                 # minimum output budget for a full résumé rewrite
+MAX_WRITE_TOKENS = 6000              # bounded headroom for long résumés and the audit notes
 
 SYSTEM = (
     "You are an expert résumé writer. You rewrite a candidate's résumé so that it is written FOR one specific job, using the job analysis "
@@ -288,11 +290,19 @@ def build_prompt(resume_text: str, job: Job, emphasis: str, analysis: dict | Non
     parts = [f"<resume>\n{_defang(resume_text, resume_mod.MAX_CHARS)}\n</resume>"]
     if analysis:
         parts.append(f"<job_analysis>\n{_defang(jobreq.as_prompt(analysis), 3500)}\n</job_analysis>")
+    description = re.sub(r"<[^>]+>", " ", job.description or "")
     parts.append(f"<job_posting>\nTitle: {_defang(job.title, 200)}\nCompany: {_defang(company, 120)}\nLocation: {_defang(job.location, 120)}\n"
-                 f"{_defang(job.description, POSTING_CHARS)}\n</job_posting>")
+                 f"{_defang(description, POSTING_CHARS)}\n</job_posting>")
     if emphasis:
         parts.append(f"<candidate_notes>\n{_defang(emphasis, 500)}\n</candidate_notes>")
     return "\n".join(parts)
+
+
+def _write_token_budget(*texts: str) -> int:
+    """Scale rewrite output allowance to résumé size, keeping space for the section notes."""
+    chars = max((len(text) for text in texts), default=0)
+    estimated = math.ceil((chars + 1800) / 3)
+    return min(MAX_WRITE_TOKENS, max(WRITE_TOKENS, estimated))
 
 
 AUDIT_SYSTEM = (
@@ -396,7 +406,8 @@ async def repair(db: AsyncSession, member: Member, original: str, tailored: str,
               f"<rewritten_resume>\n{_defang(tailored, resume_mod.MAX_CHARS + 3000)}\n</rewritten_resume>\n"
               f"<unsupported_statements>\n{_defang(listing, 3000)}\n</unsupported_statements>")
     try:
-        reply = await ai.run(db, member, "tailor_repair", REPAIR_SYSTEM, prompt, max_tokens=WRITE_TOKENS, charge=False, timeout=WRITE_TIMEOUT)
+        reply = await ai.run(db, member, "tailor_repair", REPAIR_SYSTEM, prompt,
+                             max_tokens=_write_token_budget(original, tailored), charge=False, timeout=WRITE_TIMEOUT)
     except ai.AIError:
         await db.rollback()
         return None
@@ -421,7 +432,8 @@ async def generate(db: AsyncSession, member: Member, job: Job, emphasis: str = "
         raise TailorError(f"You have {MAX_PER_MEMBER} saved résumés, the most we keep. Delete some old ones first.")
     emphasis = " ".join((emphasis or "").split())[:500]
     analysis = await jobreq.get(db, member, job)                 # free to the member, and kept for the next person who tailors to this job
-    reply = await ai.run(db, member, "tailor_resume", SYSTEM, build_prompt(original, job, emphasis, analysis), max_tokens=WRITE_TOKENS,
+    reply = await ai.run(db, member, "tailor_resume", SYSTEM, build_prompt(original, job, emphasis, analysis),
+                         max_tokens=_write_token_budget(original),
                          timeout=WRITE_TIMEOUT)
     text, changes, gaps, coverage = parse_reply(reply.text)
     if coverage and "quote" in coverage[0]:
