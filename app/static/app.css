@@ -8,6 +8,11 @@ form.search{display:grid;grid-template-columns:2fr 1.2fr auto auto;gap:8px;margi
 input,select,textarea,button{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
 button,.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;text-decoration:none;display:inline-block;font-weight:600}
 button:hover,.btn:hover{background:var(--brand-dark)}
+button.is-loading,.btn.is-loading{cursor:wait;opacity:.88}
+button.is-loading::after,.btn.is-loading::after{content:"";display:inline-block;width:1em;height:1em;margin-left:.55em;vertical-align:-.15em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:button-spin .7s linear infinite}
+button:disabled.is-loading{opacity:.88}
+@keyframes button-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){button.is-loading::after,.btn.is-loading::after{animation-duration:2s}}
 button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}button.danger{background:#dc2626}
 .job{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;text-decoration:none;color:inherit}
 .job:hover{border-color:var(--brand)}.job h3{margin:0 0 2px;font-size:16px}.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand);margin-right:6px}

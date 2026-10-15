@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>{% block title %}{{ nav|capitalize }}{% endblock %} · CareerSniper admin</title>
-  <link rel="stylesheet" href="{{ admin_url('/static/admin.css') }}">
+  <link rel="stylesheet" href="{{ admin_url('/static/admin.css?v=2') }}">
   <link rel="icon" href="data:,">
 </head>
 <body>
@@ -32,6 +32,6 @@
 {% else %}
 <main class="solo">{% block solo %}{% endblock %}</main>
 {% endif %}
-<script src="{{ admin_url('/static/admin.js') }}"></script>
+<script src="{{ admin_url('/static/admin.js?v=2') }}"></script>
 </body>
 </html>

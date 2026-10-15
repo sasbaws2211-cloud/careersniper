@@ -33,6 +33,9 @@
   function busy(on) {
     button.disabled = on;
     button.textContent = on ? "Opening secure checkout…" : label;
+    button.classList.toggle("is-loading", on);
+    if (on) button.setAttribute("aria-busy", "true");
+    else button.removeAttribute("aria-busy");
   }
   function stop() { if (timer) { clearInterval(timer); timer = null; } }
 

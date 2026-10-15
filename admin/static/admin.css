@@ -39,6 +39,10 @@ input, select, textarea, button { font: inherit; color: var(--text); background:
 button, .btn { background: var(--brand); color: #fff; border-color: var(--brand); cursor: pointer; text-decoration: none; display: inline-block; }
 button.ghost, .btn.ghost { background: transparent; color: var(--text); border-color: var(--line); }
 button.danger { background: var(--err); border-color: var(--err); color: #fff; }
+button.is-loading, .btn.is-loading { cursor: wait; opacity: .88; }
+button.is-loading::after, .btn.is-loading::after { content: ""; display: inline-block; width: 1em; height: 1em; margin-left: .55em; vertical-align: -.15em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: button-spin .7s linear infinite; }
+@keyframes button-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { button.is-loading::after, .btn.is-loading::after { animation-duration: 2s; } }
 button.small { padding: 3px 10px; font-size: 12.5px; }
 label.check { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--text); }
 label.check input { margin: 0; }

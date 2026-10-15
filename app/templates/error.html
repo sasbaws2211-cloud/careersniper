@@ -7,4 +7,5 @@
 {% elif status >= 500 %}<p class="muted">Something went wrong on our side. Please try again in a moment. If it keeps happening, tell us the reference below.</p>
 {% else %}<p class="muted">We couldn't complete that request.</p>{% endif %}
 <p><a class="btn" href="/">Back to the start</a></p>
-{% if status >= 500 %}<p class="muted" style="font-size:12px">Reference: <code>{{ rid }}</code></p>{% endif %}</div></div></body></html>
+{% if status >= 500 %}<p class="muted" style="font-size:12px">Reference: <code>{{ rid }}</code></p>{% endif %}</div></div>
+<script src="/static/loading.js?v={{ CSS_V }}"></script></body></html>

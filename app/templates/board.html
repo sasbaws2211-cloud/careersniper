@@ -77,55 +77,55 @@
 <aside class="side" aria-label="Filters">
   <h2>Filters</h2>
   <label class="f" for="f-sort">Sort by</label>
-  <select id="f-sort" name="sort" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-sort" name="sort" form="jobsearch" onchange="this.form.requestSubmit()">
     {% for k, label in sorts.items() %}<option value="{{ k }}" {{'selected' if sort==k}}>{{ label }}</option>{% endfor %}
   </select>
   <label class="f" for="f-days">Posted</label>
-  <select id="f-days" name="days" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-days" name="days" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="0">Any time</option>
     {% for d,l in [(1,'Past 24h'),(7,'Past week'),(30,'Past month')] %}
       <option value="{{d}}" {{'selected' if days==d}}>{{l}}</option>
     {% endfor %}
   </select>
   <label class="f" for="f-country">Country</label>
-  <select id="f-country" name="country" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-country" name="country" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="">Any country</option>
     {% for code, name in countries %}<option value="{{ code }}" {{'selected' if flt.country==code}}>{{ name }}</option>{% endfor %}
   </select>
   <label class="f" for="f-type">Job type</label>
-  <select id="f-type" name="type" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-type" name="type" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="">Any job type</option>
     {% for k, label in job_types.items() %}<option value="{{ k }}" {{'selected' if flt.job_type==k}}>{{ label }}</option>{% endfor %}
   </select>
   <label class="f" for="f-level">Level</label>
-  <select id="f-level" name="level" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-level" name="level" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="">Any level</option>
     {% for k, label in levels.items() %}<option value="{{ k }}" {{'selected' if flt.seniority==k}}>{{ label }}</option>{% endfor %}
   </select>
   <label class="f" for="f-minpay">Minimum pay (USD / yr)</label>
-  <select id="f-minpay" name="min_pay" form="jobsearch" aria-label="Minimum pay per year (USD)" onchange="this.form.submit()">
+  <select id="f-minpay" name="min_pay" form="jobsearch" aria-label="Minimum pay per year (USD)" onchange="this.form.requestSubmit()">
     <option value="">Any</option>
     {% for v in pay_steps %}<option value="{{ v }}" {{'selected' if flt.pay_min==v}}>${{ '{:,}'.format(v) }}+ / yr</option>{% endfor %}
     {% if flt.pay_min and flt.pay_min not in pay_steps %}<option value="{{ flt.pay_min }}" selected>${{ '{:,}'.format(flt.pay_min) }}+ / yr</option>{% endif %}
   </select>
   <label class="f" for="f-maxpay">Maximum pay (USD / yr)</label>
-  <select id="f-maxpay" name="max_pay" form="jobsearch" aria-label="Maximum pay per year (USD)" onchange="this.form.submit()">
+  <select id="f-maxpay" name="max_pay" form="jobsearch" aria-label="Maximum pay per year (USD)" onchange="this.form.requestSubmit()">
     <option value="">Any</option>
     {% for v in pay_steps %}<option value="{{ v }}" {{'selected' if flt.pay_max==v}}>up to ${{ '{:,}'.format(v) }} / yr</option>{% endfor %}
     {% if flt.pay_max and flt.pay_max not in pay_steps %}<option value="{{ flt.pay_max }}" selected>up to ${{ '{:,}'.format(flt.pay_max) }} / yr</option>{% endif %}
   </select>
   <label class="f" for="f-remote-from">Remote jobs open to</label>
-  <select id="f-remote-from" name="remote_from" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-remote-from" name="remote_from" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="">Anywhere</option>
     {% for key, label in remote_regions %}<option value="{{ key }}" {{'selected' if flt.remote_from==key}}>{{ label }}</option>{% endfor %}
   </select>
   <label class="f" for="f-visa">Visa sponsorship</label>
-  <select id="f-visa" name="visa" form="jobsearch" onchange="this.form.submit()">
+  <select id="f-visa" name="visa" form="jobsearch" onchange="this.form.requestSubmit()">
     <option value="">Any</option>
     {% for k, label in visa_choices.items() %}<option value="{{ k }}" {{'selected' if flt.visa==k}}>{{ label }}</option>{% endfor %}
   </select>
-  <label class="check"><input type="checkbox" name="remote" value="true" form="jobsearch" onchange="this.form.submit()" {{ 'checked' if remote }}> Remote only</label>
-  <label class="check"><input type="checkbox" name="paid" value="true" form="jobsearch" onchange="this.form.submit()" {{ 'checked' if flt.paid }}> Pay listed</label>
+  <label class="check"><input type="checkbox" name="remote" value="true" form="jobsearch" onchange="this.form.requestSubmit()" {{ 'checked' if remote }}> Remote only</label>
+  <label class="check"><input type="checkbox" name="paid" value="true" form="jobsearch" onchange="this.form.requestSubmit()" {{ 'checked' if flt.paid }}> Pay listed</label>
   <button class="apply" type="submit" form="jobsearch">Apply filters</button>
   {% if flt.active or remote or days or sort != 'new' %}<a href="/jobs{{ '?for=all' if for_all }}" class="clear">Clear filters</a>{% endif %}
 </aside>

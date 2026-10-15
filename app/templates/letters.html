@@ -19,6 +19,9 @@
   <div style="display:flex;gap:6px">
     <a class="btn" href="/letters/{{ doc.id }}">Open</a>
     <a class="btn ghost" href="/letters/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">.txt</a>
+    <form method="post" action="/letters/{{ doc.id }}/delete" style="margin:0" data-confirm="Delete this letter?">
+      <button class="ghost" type="submit">Delete</button>
+    </form>
   </div>
 </div>
 {% else %}
