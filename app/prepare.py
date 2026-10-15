@@ -11,8 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import coach as coach_mod, letters, resume as resume_mod, tailor, tracker
 from .models import InterviewSession, Job, Member
 
-# AI requests each step costs the member (the analysis and fact-check steps of a tailor are free), shown before they start
-COSTS = {"coach": coach_mod.EXPECTED_REQUESTS, "tailor": 1, "letter": 1, "interview": 1}
+# Informational request estimates for steps; AI enforcement remains on the account's daily allowance.
+COSTS = {"tailor": 1, "letter": 1, "interview": 1}
 
 
 async def steps(db: AsyncSession, member: Member, job: Job) -> dict:
@@ -27,7 +27,7 @@ async def steps(db: AsyncSession, member: Member, job: Job) -> dict:
     rows = [
         {"key": "resume", "title": "Add your résumé", "done": has_resume, "href": "/resume", "cost": 0,
          "detail": "Everything below is written from it."},
-        {"key": "coach", "title": "Check the fit", "done": coach is not None, "href": f"/jobs/{job.id}#coach", "cost": COSTS["coach"],
+        {"key": "coach", "title": "Check the fit", "done": coach is not None, "href": f"/jobs/{job.id}#coach", "cost": None,
          "detail": coach.get("summary") if coach else "What your résumé shows, what is missing, and the edits worth making."},
         {"key": "tailor", "title": "Tailor your résumé", "done": doc is not None, "href": f"/tailored/{doc.id}" if doc else f"/jobs/{job.id}/tailor",
          "cost": COSTS["tailor"], "detail": "A rewrite for this posting, fact-checked against the original."},

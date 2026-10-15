@@ -2075,7 +2075,7 @@ async def alerts_from_resume(request: Request, db: AsyncSession = Depends(get_db
 
 async def _coach_context(db: AsyncSession, member: Member | None, job: Job) -> dict:
     """Résumé coach panel state for a job page."""
-    ctx = {"coach": None, "coach_resume": False, "coach_credits": None, "coach_cost": coach_mod.EXPECTED_REQUESTS, "coach_error": ""}
+    ctx = {"coach": None, "coach_resume": False, "coach_credits": None, "coach_error": ""}
     if not member or not (await ai.enabled()):
         return ctx
     r = await resume_mod.get_main(db, member)

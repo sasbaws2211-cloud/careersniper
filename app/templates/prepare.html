@@ -4,7 +4,7 @@
 <p><a href="/jobs/{{ job.id }}">&larr; {{ job.title }} at {{ job.company.name }}</a></p>
 <div class="hero"><h1>Prepare your application</h1>
   <div class="muted">{{ plan.done }} of {{ plan.total }} steps done. Do them in this order: each one builds on the one before.</div></div>
-{% if credits %}<p class="muted" style="font-size:13px">{% if credits.trial %}Free trial: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} AI requests left; after that the AI steps need a paid plan.{% else %}AI requests left today: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }}.{% endif %}</p>{% endif %}
+{% if credits %}<p class="muted" style="font-size:13px">{% if credits.trial %}Free trial: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} AI requests left; after that the AI steps need a paid plan.{% else %}AI requests left today: {{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }}.{% endif %} Step figures are estimates, not separate per-step caps.</p>{% endif %}
 
 {% for s in plan.rows %}
 <div class="card" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap{% if plan.next == s.key %};border-color:var(--brand){% endif %}">

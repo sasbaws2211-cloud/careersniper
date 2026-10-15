@@ -98,9 +98,9 @@
       </div>
     {% else %}
       <p class="muted" style="margin:0 0 10px">See what your résumé already shows for this job, what is missing, and the edits worth making before you apply.
-        Uses {{ coach_cost }} AI request.
         {% if coach_credits.trial %}This is part of your <b>free trial</b>: {{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} requests left, then a paid plan is needed.
-        {% else %}({{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} left today.){% endif %}</p>
+        {% else %}({{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} left today.){% endif %}
+        Requests count toward your daily allowance, not a separate one-request step limit. Advice is cached for this résumé and job.</p>
       <form method="post" action="/jobs/{{ job.id }}/coach" style="margin:0"><button type="submit">Check my résumé for this job</button></form>
     {% endif %}
   </section>

@@ -16,7 +16,6 @@ from .models import Job, Member, Resume
 
 POSTING_CHARS = 3500
 RESUME_CHARS = 6000
-EXPECTED_REQUESTS = 1      # one piece of advice is one AI request
 KEEP = 30                      # cached answers kept per résumé
 VERDICTS = ("strong", "good", "partial", "weak")
 
