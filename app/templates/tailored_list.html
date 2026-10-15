@@ -17,6 +17,9 @@
   <div style="display:flex;gap:6px">
     <a class="btn" href="/tailored/{{ doc.id }}">Open</a>
     <a class="btn ghost" href="/tailored/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">.txt</a>
+    <form method="post" action="/tailored/{{ doc.id }}/delete" style="margin:0" onsubmit="return confirm('Delete this tailored résumé?')">
+      <button class="ghost" type="submit">Delete</button>
+    </form>
   </div>
 </div>
 {% else %}
