@@ -222,8 +222,8 @@ def _fail(s: Settings, r: httpx.Response) -> AIError:
     log.warning("AI call failed provider=%s model=%s status=%s body=%s", s.provider, s.model, r.status_code, r.text[:300].replace("\n", " "))
     if r.status_code in (401, 403):
         return AIError("The AI service is not set up correctly. Please try again later.", 503)
-    if r.status_code == 429:
-        return AIError("The AI service is busy right now. Please try again in a minute.", 503)
+    if r.status_code in (429, 503):
+        return AIError("The AI service is temporarily overloaded. Please try again in a minute.", 503)
     if r.status_code in (400, 413, 422):
         return AIError("That text was too long or could not be processed. Try with less text.", 400)
     return AIError("The AI service is not responding right now. Please try again in a moment.", 502)
