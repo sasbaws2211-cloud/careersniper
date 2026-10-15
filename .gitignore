@@ -1,7 +1,10 @@
 app/__pycache__/
 migrations/__pycache__/
 migrations/versions/
-tests/
+!tests/
+tests/*
+!tests/test_cache.py
+!tests/test_dedupe_page.py
 venv/ 
 .env".env" 
 ".env" 

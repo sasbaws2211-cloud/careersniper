@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import classify, filters
+from . import cache, classify, filters
 from .models import Job
 
 MIN_SAMPLES = 8
@@ -128,9 +128,16 @@ async def _build(db: AsyncSession) -> tuple[list[dict], dict]:
 
 
 async def _load(db: AsyncSession) -> tuple[list[dict], dict]:
-    if _cache["groups"] is None or time.time() - _cache["at"] > TTL:
-        groups, by_slug = await _build(db)
-        _cache.update(at=time.time(), groups=groups, by_slug=by_slug)
+    if _cache["groups"] is not None and time.time() - _cache["at"] <= TTL:
+        return _cache["groups"], _cache["by_slug"]
+    shared = await cache.get_json("public:salary-groups:v1")
+    if (isinstance(shared, dict) and isinstance(shared.get("groups"), list)
+            and isinstance(shared.get("by_slug"), dict)):
+        _cache.update(at=time.time(), groups=shared["groups"], by_slug=shared["by_slug"])
+        return _cache["groups"], _cache["by_slug"]
+    groups, by_slug = await _build(db)
+    _cache.update(at=time.time(), groups=groups, by_slug=by_slug)
+    await cache.set_json("public:salary-groups:v1", {"groups": groups, "by_slug": by_slug}, TTL)
     return _cache["groups"], _cache["by_slug"]
 
 

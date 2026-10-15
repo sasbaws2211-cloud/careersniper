@@ -3,6 +3,15 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 # Only Caddy publishes ports. The app and database are reachable only inside the compose network.
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   db:
     image: postgres:16
     restart: unless-stopped
@@ -22,10 +31,12 @@ services:
     restart: unless-stopped
     depends_on:
       db: {condition: service_healthy}
+      redis: {condition: service_healthy}
     env_file: .env.production
     environment:
       APP_ENV: production
       DATABASE_URL: postgresql+asyncpg://careersniper:${DB_PASSWORD}@db:5432/careersniper
+      REDIS_URL: redis://redis:6379/0
     expose: ["8000"]
 
   caddy:

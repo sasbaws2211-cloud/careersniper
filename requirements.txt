@@ -18,3 +18,4 @@ httpx==0.28.1
 python-multipart==0.0.32
 cryptography==50.0.1 
 sentry-sdk
+redis==5.2.1

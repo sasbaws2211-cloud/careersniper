@@ -78,11 +78,22 @@ async def page(db: AsyncSession, base, rank=None, offset: int = 0, limit: int = 
         cols.append(rank.label("rank"))
     sub = base.with_only_columns(*cols).subquery()
     first = sub.c.rn == 1
-    total = await db.scalar(select(func.count()).select_from(sub).where(first))
     order = [sub.c.feat.desc()] + ([sub.c.rank.desc()] if rank is not None else []) + [sub.c.seen.desc(), sub.c.jid.desc()]
     if sort == "pay":
         order = [sub.c.pay.desc(), sub.c.seen.desc(), sub.c.jid.desc()]
-    ids = list((await db.scalars(select(sub.c.jid).where(first).order_by(*order).offset(offset).limit(limit))))
+    page = (await db.execute(
+        select(sub.c.jid, func.count().over().label("total"))
+        .where(first)
+        .order_by(*order)
+        .offset(offset)
+        .limit(limit)
+    )).all()
+    if page:
+        ids, total = zip(*page)
+        total = total[0]
+    else:
+        ids = ()
+        total = await db.scalar(select(func.count()).select_from(sub).where(first))
     by_id = {j.id: j for j in (await db.scalars(select(Job).where(Job.id.in_(ids))))} if ids else {}
     return total, [by_id[i] for i in ids if i in by_id]
 

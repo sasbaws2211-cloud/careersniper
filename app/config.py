@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")      # development convenience; real environment variables win
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres@localhost:5432/careersniper")
+REDIS_URL = os.getenv("REDIS_URL", "")
 DB_POOL = os.getenv("DB_POOL", "")                                 # "null" = no pooling (tests)
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))

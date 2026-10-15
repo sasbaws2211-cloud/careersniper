@@ -17,7 +17,8 @@ Free preview shows a limited number of matching jobs. Full search, filters, aler
 ## Run locally
 
 PostgreSQL is the only supported database. Tables are SQLModel classes (`app/models.py`), the app talks to the database through an
-async engine (asyncpg), and the schema is managed with Alembic.
+async engine (asyncpg), and the schema is managed with Alembic. Redis is used as an optional shared cache for public homepage,
+company-directory, and salary data. The app continues to work without Redis, using its existing in-process caches instead.
 
 ```bash
 pip install -r requirements.txt
@@ -44,7 +45,7 @@ Moving data from the old SQLite file: `python -m app.cli migrate
 
 ## Config (env)
 
-`DATABASE_URL`, `SECRET_KEY`, `PUBLIC_URL`, `PAYSTACK_SECRET_KEY` / `PAYSTACK_SECRET_KEY (webhook sig)` (billing), `ANTHROPIC_API_KEY` (AI tools), SMTP settings for email.
+`DATABASE_URL`, `REDIS_URL` (optional cache), `SECRET_KEY`, `PUBLIC_URL`, `PAYSTACK_SECRET_KEY` / `PAYSTACK_SECRET_KEY (webhook sig)` (billing), `ANTHROPIC_API_KEY` (AI tools), SMTP settings for email.
 
 See [PRODUCTION.md](PRODUCTION.md) for deploy notes.
 

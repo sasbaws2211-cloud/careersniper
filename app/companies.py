@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import classify, dedupe
+from . import cache, classify, dedupe
 from .models import Company, Job
 
 BASELINE = timedelta(minutes=10)     # one scrape stamps every job on a board with the same moment; later than this is a job we saw appear
@@ -58,6 +58,14 @@ async def _directory_rows(db: AsyncSession) -> list[dict]:
     from .main import feed_query                   # lazy: main imports this module
     if _cache["rows"] is not None and time.time() - _cache["at"] < DIRECTORY_TTL:
         return _cache["rows"]
+    shared = await cache.get_json("public:company-directory:v1")
+    if isinstance(shared, list) and all(
+        isinstance(row, dict) and isinstance(row.get("id"), int) and isinstance(row.get("name"), str)
+        and isinstance(row.get("slug"), str) and isinstance(row.get("open"), int)
+        for row in shared
+    ):
+        _cache.update(at=time.time(), rows=shared)
+        return shared
     counts = dict((await db.execute(feed_query().with_only_columns(Job.company_id, func.count(func.distinct(dedupe.group_key()))).group_by(Job.company_id))).all())
     by_name: dict[str, dict] = {}
     for c in (await db.scalars(select(Company).where(Company.active.is_(True)).order_by(Company.id))):
@@ -68,6 +76,7 @@ async def _directory_rows(db: AsyncSession) -> list[dict]:
         row["open"] += n
     rows = sorted(by_name.values(), key=lambda r: (-r["open"], r["name"].lower()))
     _cache.update(at=time.time(), rows=rows)
+    await cache.set_json("public:company-directory:v1", rows, DIRECTORY_TTL)
     return rows
 
 

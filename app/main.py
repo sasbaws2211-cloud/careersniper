@@ -32,7 +32,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt
 from . import search as search_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
@@ -163,7 +163,10 @@ async def lifespan(app):
         await seed_registry(db)
     if config.ENABLE_SCHEDULER:
         threading.Thread(target=_scheduler, daemon=True).start()
-    yield
+    try:
+        yield
+    finally:
+        await cache_mod.close()
 
 
 app = FastAPI(title=config.PLATFORM_NAME, lifespan=lifespan,
@@ -417,12 +420,20 @@ async def site_stats(db: AsyncSession, force: bool = False) -> dict | None:
     """Live jobs, employers they come from, and when the pool was last refreshed. None while the pool is empty."""
     if not force and _stats_cache["value"] is not None and time.time() - _stats_cache["at"] < STATS_TTL:
         return _stats_cache["value"] or None
+    if not force:
+        shared = await cache_mod.get_json("public:site-stats:v1")
+        if (isinstance(shared, dict) and isinstance(shared.get("jobs"), int)
+                and isinstance(shared.get("companies"), int) and isinstance(shared.get("updated"), str)):
+            _stats_cache.update(at=time.time(), value=shared)
+            return shared
     live = feed_query().subquery()
     jobs = (await db.scalar(select(func.count()).select_from(live))) or 0
     companies = (await db.scalar(select(func.count(func.distinct(live.c.company_id))))) or 0
     last = await db.scalar(select(func.max(Company.last_scraped)).where(Company.active.is_(True)))
     value = {"jobs": jobs, "companies": companies, "updated": ago(last)} if jobs else {}
     _stats_cache.update(at=time.time(), value=value)
+    if value:
+        await cache_mod.set_json("public:site-stats:v1", value, STATS_TTL)
     return value or None
 
 
