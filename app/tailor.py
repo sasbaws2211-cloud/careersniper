@@ -30,7 +30,7 @@ from .models import Document, Job, Member
 KIND = "tailored_resume"
 MAX_PER_MEMBER = 100
 MAX_EDIT_CHARS = resume_mod.MAX_CHARS + 3000
-POSTING_CHARS = 2500                # the writer also sees the start of the posting, next to the structured analysis
+POSTING_CHARS = jobreq.POSTING_CHARS
 MIN_RATIO = 0.35                    # a tailored résumé much shorter than the original has lost whole roles
 MAX_FLAGS = 25
 MAX_PLACEHOLDERS = 8
@@ -48,16 +48,17 @@ SYSTEM = (
     "summary, not in key qualifications, not in skills), not even reworded, not even as \"familiarity\" or \"exposure\".\n"
     "THEN WRITE\n"
     "1. SUMMARY: a new 3 to 4 line summary aimed at this role: the kind of professional the candidate is, their years of experience as the "
-    "résumé shows them, and the two or three strongest things from the résumé that answer the job's top requirements. Never name the "
+    "résumé shows them, and the two or three strongest things from the résumé that answer the job's top requirements and priorities. Never name the "
     "company you are writing for.\n"
     "2. KEY QUALIFICATIONS: a new section straight after SUMMARY, three to six bullets. Each answers one MUST HAVE that you proved above, "
     "with that proof (what was done, at what scale, with what result), written as \"requirement: proof\". One bullet per proved requirement "
     "at most, and none for a requirement marked NONE.\n"
-    "3. EXPERIENCE: keep every role with its employer, title and dates. Rewrite the bullets of every role: put what matters most for this "
-    "job first; open each bullet with a strong verb; say what was done, at what scale and with what result, using only facts in the résumé; "
-    "use the job's own vocabulary where the résumé shows the same thing (translate the candidate's terms into the posting's terms); merge "
-    "duplicates and drop bullets with no bearing on the job. Roles most relevant to the job get the most space; older or less relevant roles "
-    "may shrink to a line or two.\n"
+    "3. EXPERIENCE: keep every role with its employer, title and dates. Rewrite the bullets of every role: put the duties and outcomes "
+    "most relevant to this posting first; open each bullet with a strong verb; say what was done, at what scale and with what result, using "
+    "only facts in the résumé. Reflect the posting's specific product, customer, domain, methods and responsibility language wherever the "
+    "résumé supports the same work; do not settle for generic wording when a precise supported match is available. Use the job's own "
+    "vocabulary where the résumé shows the same thing; merge duplicates and drop bullets with no bearing on the job. Roles most relevant "
+    "to the job get the most space; older or less relevant roles may shrink to a line or two.\n"
     "4. SKILLS: regroup under headings that mirror the job's categories and order them by the job's priorities. List only skills, tools and "
     "domains the résumé shows, using the job's exact term when the résumé shows the same thing (the résumé says \"Postgres\", the job says "
     "\"PostgreSQL\").\n"
@@ -289,10 +290,9 @@ def build_prompt(resume_text: str, job: Job, emphasis: str, analysis: dict | Non
     company = job.company.name if job.company else job.company_name
     parts = [f"<resume>\n{_defang(resume_text, resume_mod.MAX_CHARS)}\n</resume>"]
     if analysis:
-        parts.append(f"<job_analysis>\n{_defang(jobreq.as_prompt(analysis), 3500)}\n</job_analysis>")
-    description = re.sub(r"<[^>]+>", " ", job.description or "")
+        parts.append(f"<job_analysis>\n{_defang(jobreq.as_prompt(analysis), 7000)}\n</job_analysis>")
     parts.append(f"<job_posting>\nTitle: {_defang(job.title, 200)}\nCompany: {_defang(company, 120)}\nLocation: {_defang(job.location, 120)}\n"
-                 f"{_defang(description, POSTING_CHARS)}\n</job_posting>")
+                 f"{jobreq.posting_description(job.description)}\n</job_posting>")
     if emphasis:
         parts.append(f"<candidate_notes>\n{_defang(emphasis, 500)}\n</candidate_notes>")
     return "\n".join(parts)
