@@ -84,7 +84,7 @@
         <li>Direct apply links</li>
         <li>Never auto-renews</li>
       </ul>
-      <a class="btn" href="/checkout?plan=pass">Get the pass</a>
+      <a class="btn" href="/checkout?plan=pass{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get the pass</a>
     </div>
     <div class="plan">
       <h3>Weekly</h3>
@@ -97,7 +97,7 @@
         <li>Like / dislike ranking</li>
         <li>Email job alerts</li>
       </ul>
-      <a class="btn" href="/checkout?plan=weekly">Get Weekly</a>
+      <a class="btn" href="/checkout?plan=weekly{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Weekly</a>
     </div>
     <div class="plan featured">
       <span class="badge">Most popular</span>
@@ -111,7 +111,7 @@
         <li>Best value vs weekly</li>
         <li>Cancel anytime</li>
       </ul>
-      <a class="btn" href="/checkout?plan=monthly">Get Monthly</a>
+      <a class="btn" href="/checkout?plan=monthly{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Monthly</a>
     </div>
     <div class="plan">
       <h3>Lifetime</h3>
@@ -123,7 +123,7 @@
         <li>Full search forever</li>
         <li>Alerts included</li>
       </ul>
-      <a class="btn" href="/checkout?plan=lifetime">Get Lifetime</a>
+      <a class="btn" href="/checkout?plan=lifetime{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Lifetime</a>
     </div>
   </div>
 </div>

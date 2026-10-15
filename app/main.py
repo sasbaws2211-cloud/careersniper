@@ -535,10 +535,11 @@ async def job_detail(job_id: int, request: Request, org: Org = Depends(tenant), 
     tool_keys = set()  # career tools not registered in B2C seeker surface
     me = await current_member(request, db)
     has_access = await _member_has_access(me, db)
+    onboarding_complete = await onboarding_mod.is_complete(db, me) if me else False
     req_row = await db.get(JobRequirement, job.id)          # the shared analysis of this posting, when one has been made (never made on a page view)
     reqs = req_row.data if req_row and isinstance(req_row.data, dict) and (req_row.data.get("must_have") or req_row.data.get("responsibilities")) else None
     return templates.TemplateResponse(request, "job.html", dict(**(await _coach_context(db, me, job)), reqs=reqs, org=org, job=job, saved=saved, others=others, tool_keys=tool_keys, show_badge=_badge(org), now=datetime.utcnow(), has_access=has_access, preview_chars=PREVIEW_DESC_CHARS,
-                                                              signed_in=me is not None, tracked=(await tracker.tracked_status(db, me, job.id)), tracker_labels=tracker.LABELS, company_path=companies.path(job.company), salary_path=(await salaries.path_for_title(db, job.title))))
+                                                              signed_in=me is not None, onboarding_complete=onboarding_complete, tracked=(await tracker.tracked_status(db, me, job.id)), tracker_labels=tracker.LABELS, company_path=companies.path(job.company), salary_path=(await salaries.path_for_title(db, job.title))))
 
 
 @app.get("/go/{job_id}")
@@ -752,7 +753,10 @@ async def member_login(request: Request, org: Org = Depends(tenant), db: AsyncSe
         return _member_form(request, org, "member_login.html", e.status, error=str(e), next=members.safe_next(next))
     members.clear_failures(key)
     start_member_session(request, m)
-    return _remember_member(RedirectResponse(members.safe_next(next), status_code=303))
+    dest = members.safe_next(next)
+    if dest.startswith("/jobs") and "unlocked" in dest and not await onboarding_mod.is_complete(db, m):
+        dest = "/onboarding?welcome=1&next=" + quote(dest, safe="")
+    return _remember_member(RedirectResponse(dest, status_code=303))
 
 
 @app.post("/member/logout")

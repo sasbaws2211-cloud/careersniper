@@ -36,7 +36,14 @@
     {% if has_access %}
     <a class="btn" href="/go/{{ job.id }}" rel="nofollow">{{ 'Apply by email' if job.url.startswith('mailto:') else 'Apply on company site' }}</a>
     {% else %}
-    <a class="btn" href="/checkout?plan=monthly&next=/jobs/{{ job.id }}" rel="nofollow">Unlock to apply</a>
+    {% set onboarding_next = ('/jobs/' ~ job.id ~ '?unlocked=1')|urlencode %}
+    {% if not signed_in %}
+    <a class="btn" href="/member/signup?next={{ onboarding_next }}" rel="nofollow">Unlock to apply</a>
+    {% elif not onboarding_complete %}
+    <a class="btn" href="/onboarding?next={{ onboarding_next }}" rel="nofollow">Unlock to apply</a>
+    {% else %}
+    <a class="btn" href="/checkout?plan=monthly&amp;next={{ ('/jobs/' ~ job.id)|urlencode }}" rel="nofollow">Unlock to apply</a>
+    {% endif %}
     {% endif %}
     {% if signed_in and ai_on %}
     <a class="btn ghost" href="/jobs/{{ job.id }}/prepare" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10024; Prepare my application</a>
