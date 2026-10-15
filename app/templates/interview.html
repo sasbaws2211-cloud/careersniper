@@ -47,7 +47,7 @@
 </div>
 {% endfor %}
 
-<form method="post" action="/interview/{{ s.id }}/delete" onsubmit="return confirm('Delete this practice session and your answers?')">
+<form method="post" action="/interview/{{ s.id }}/delete" data-confirm="Delete this practice session and your answers?">
   <button class="ghost" type="submit">Delete this session</button>
 </form>
 {% endblock %}

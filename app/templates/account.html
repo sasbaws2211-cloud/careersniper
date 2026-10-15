@@ -16,7 +16,7 @@
     </p>
     {% if sub.status == 'active' and sub.interval not in ('lifetime', 'once') and billing_on %}
     <form method="post" action="/account/billing/cancel"
-          onsubmit="return confirm('Cancel future charges? You keep access until the end of the paid period.')">
+          data-confirm="Cancel future charges? You keep access until the end of the paid period.">
       <button class="ghost">Cancel subscription</button>
     </form>
     {% endif %}
@@ -45,5 +45,5 @@
 <div class="card"><h2>Invite friends</h2><p class="muted">Get a free week for every friend who subscribes through your link.</p><a class="btn" href="/referrals">Get my link</a></div>
 
 <div class="card"><h2>Delete account</h2><p class="muted">Deletes your account and everything attached to it: saved jobs, résumé, tracker, AI documents, followed companies and job alerts. Your subscription is not refunded by deleting the account.</p>
-<form method="post" action="/account/delete" onsubmit="return confirm('Delete your account?')" style="display:flex;gap:8px"><input name="password" type="password" placeholder="Confirm your password" required style="flex:1"><button class="danger">Delete</button></form></div>
+<form method="post" action="/account/delete" data-confirm="Delete your account?" style="display:flex;gap:8px"><input name="password" type="password" placeholder="Confirm your password" required style="flex:1"><button class="danger">Delete</button></form></div>
 {% endblock %}

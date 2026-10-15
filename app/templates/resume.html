@@ -77,7 +77,7 @@
 </form>
 
 {% if text %}
-<form method="post" action="/resume/delete" onsubmit="return confirm('Delete your résumé and any match results made from it?')">
+<form method="post" action="/resume/delete" data-confirm="Delete your résumé and any match results made from it?">
   <button class="ghost" type="submit">Delete my résumé</button>
 </form>
 {% endif %}

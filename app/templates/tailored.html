@@ -99,7 +99,7 @@
     <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Write cover letter</a>
     <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">Tailor again</a>
   {% endif %}
-  <form method="post" action="/tailored/{{ doc.id }}/delete" style="margin:0" onsubmit="return confirm('Delete this tailored résumé?')">
+  <form method="post" action="/tailored/{{ doc.id }}/delete" style="margin:0" data-confirm="Delete this tailored résumé?">
     <button class="ghost" type="submit">Delete</button>
   </form>
 </div>

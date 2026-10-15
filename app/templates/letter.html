@@ -31,7 +31,7 @@
     <form method="post" action="/jobs/{{ job.id }}/track" style="margin:0"><input type="hidden" name="next" value="/letters/{{ doc.id }}"><button class="ghost" type="submit">+ Track this job</button></form>
     {% elif tracked %}<a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; In your tracker</a>{% endif %}
   {% endif %}
-  <form method="post" action="/letters/{{ doc.id }}/delete" style="margin:0" onsubmit="return confirm('Delete this letter?')">
+  <form method="post" action="/letters/{{ doc.id }}/delete" style="margin:0" data-confirm="Delete this letter?">
     <button class="ghost" type="submit">Delete</button>
   </form>
 </div>

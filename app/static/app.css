@@ -150,6 +150,14 @@ header.top .wrap.nav{display:flex;align-items:center;gap:4px;min-height:62px;pad
 }
 @media(prefers-reduced-motion:reduce){.nav-link,.caret,.nav-burger i{transition:none}}
 
+dialog.confirm-dialog{width:min(440px,calc(100% - 32px));max-width:none;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);box-shadow:0 20px 60px rgba(15,23,42,.28)}
+dialog.confirm-dialog::backdrop{background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+.confirm-dialog-panel{padding:22px}
+.confirm-dialog-panel h2{margin:0 0 8px;font-size:1.15rem}
+.confirm-dialog-panel p{margin:0;color:var(--muted);white-space:pre-line}
+.confirm-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
+.confirm-dialog-actions button{min-width:88px}
+
 /* ---- job description: structured, readable ---- */
 .desc-title{font-size:1.1rem;margin:22px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
 .desc.rich{white-space:normal;max-width:70ch;font-size:15.5px;line-height:1.7;color:#1f2937}
