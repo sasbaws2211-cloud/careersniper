@@ -263,11 +263,10 @@ async def ai_settings_view(db: AsyncSession) -> dict:
     s, why = await ai.resolve()
     key = stored.get("ai_api_key")
     env_key = bool(site.AI_API_KEY or site.ANTHROPIC_API_KEY or site.OPENAI_API_KEY)
-    plans = [{"plan": p, "price": info["price_usd"], "default": info["ai_requests_daily"], "stored": stored.get(f"ai_requests_{p}")} for p, info in site.CONSUMER_PLANS.items()]
     env = {"provider": site.AI_PROVIDER, "base_url": site.AI_BASE_URL, "model": site.AI_MODEL, "token_param": site.AI_TOKEN_PARAM, "timeout": site.AI_TIMEOUT,
            "max_output_tokens": site.AI_MAX_OUTPUT_TOKENS, "max_concurrency": site.AI_MAX_CONCURRENCY, "json_mode": site.AI_JSON_MODE, "free_trials": site.AI_FREE_REQUESTS}
     info = await runtime_settings.stored_info(db)
     last = max(info.values(), key=lambda i: i["updated_at"]) if info else None
-    return {"on": bool(s), "why": why, "effective": s, "stored": stored, "env": env, "plans": plans, "enabled": stored.get("ai_enabled") is not False,
+    return {"on": bool(s), "why": why, "effective": s, "stored": stored, "env": env, "enabled": stored.get("ai_enabled") is not False,
             "key": {"stored": key is not None, "hint": ("..." + key[-4:]) if key else "", "env": env_key}, "unreadable": (await runtime_settings.unreadable()),
             "last_change": last, "ttl": int(runtime_settings.TTL)}

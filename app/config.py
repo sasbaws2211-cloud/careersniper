@@ -50,7 +50,6 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(3),
         "interval": "once",          # one payment, no renewal
         "days": 3,
-        "ai_requests_daily": 100,
         "description": "Full access for 3 days, paid once and never renewed. A low-risk way to try everything.",
     },
     "weekly": {
@@ -62,7 +61,6 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(7),
         "interval": "weekly",
         "days": 7,
-        "ai_requests_daily": 150,
         "description": "Full access for 7 days. Perfect for an intensive search week.",
     },
     "monthly": {
@@ -74,7 +72,6 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(20),
         "interval": "monthly",
         "days": 30,
-        "ai_requests_daily": 300,
         "description": "Full access for 30 days. Best for most job seekers.",
     },
     "lifetime": {
@@ -86,7 +83,6 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(50),
         "interval": "lifetime",
         "days": 36500,
-        "ai_requests_daily": 300,
         "description": "One-time payment. Lifetime access to the job database.",
     },
 }
@@ -147,7 +143,6 @@ AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "60"))
 AI_MAX_OUTPUT_TOKENS = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "6000"))   # hard ceiling on one answer, whatever a tool asks for
 AI_MAX_CONCURRENCY = int(os.getenv("AI_MAX_CONCURRENCY", "8"))           # model calls in flight at once
 AI_FREE_REQUESTS = int(os.getenv("AI_FREE_REQUESTS", "0"))               # lifetime AI requests for members without a paid plan
-MIN_PAID_DAILY_REQUESTS = 100                                              # every paid plan starts at 100 AI requests a day, whatever an admin types
 AI_JSON_MODE = os.getenv("AI_JSON_MODE", "0") == "1"                     # ask OpenAI-style servers for response_format=json_object (not all support it)
 AI_TOKEN_PARAM = os.getenv("AI_TOKEN_PARAM", "")                         # override: max_tokens or max_completion_tokens
 AI_EXTRA_BODY = os.getenv("AI_EXTRA_BODY", "")                           # JSON merged into every OpenAI-style request, e.g. {"chat_template_kwargs": {"enable_thinking": false}} to stop a reasoning model spending its token budget on thinking

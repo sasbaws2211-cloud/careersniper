@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import coach as coach_mod, letters, resume as resume_mod, tailor, tracker
 from .models import InterviewSession, Job, Member
 
-# Informational request estimates for steps; AI enforcement remains on the account's daily allowance.
+# Informational request estimates for steps; paid plans have unlimited requests and free trials use their lifetime allowance.
 COSTS = {"tailor": 1, "letter": 1, "interview": 1}
 
 

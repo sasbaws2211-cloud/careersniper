@@ -37,7 +37,7 @@
       <button type="submit">{{ 'Find my matches again' if match else 'Find my matches' }}</button>
     </div>
     <p class="muted" style="font-size:13px;margin:10px 0 0">
-      Uses {{ need }} AI request{{ '' if need == 1 else 's' }} ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).
+      Uses {{ need }} AI request{{ '' if need == 1 else 's' }} ({% if credits.trial %}{{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left in your free trial{% else %}unlimited on your plan; provider availability and fair-use protections apply{% endif %}).
       Based on your <a href="/resume">résumé</a>{% if match %}, last run {{ match.at_ago }}{% endif %}.
     </p>
   </form>

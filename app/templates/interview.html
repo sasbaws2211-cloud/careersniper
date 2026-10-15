@@ -16,7 +16,7 @@
 {% if error %}<div class="err">{{ error }}{% if upgrade %} <a href="/pricing">See plans</a>{% endif %}</div>{% endif %}
 {% if generic %}<div class="card muted">These are general interview questions: the AI could not make ones specific to this job this time.</div>{% endif %}
 <p class="muted" style="font-size:0.92rem">Answer in your own words, as you would out loud (aim for two minutes, about 200 to 300 words). <b>Save</b> keeps your draft for free;
-  <b>Get feedback</b> uses AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).</p>
+  <b>Get feedback</b> uses AI requests ({% if credits.trial %}{{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left in your free trial{% else %}unlimited on your plan; provider availability and fair-use protections apply{% endif %}).</p>
 
 {% for q in s.questions %}
 {% set i = loop.index0 %}

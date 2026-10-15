@@ -44,7 +44,7 @@
 
   <h2>Limits</h2>
   <div class="row">
-    <label>Free trial requests per member {{ source('ai_free_requests', v.env.free_trials) }}
+    <label>Lifetime free-trial requests per member {{ source('ai_free_requests', v.env.free_trials) }}
       <input name="free_trials" type="number" min="0" max="10000" step="1" value="{{ d.free_trials if d else v.stored.get('ai_free_requests', '') }}" placeholder="{{ v.env.free_trials }}" {{ 'disabled' if not can }}></label>
     <label>Calls at once {{ source('ai_max_concurrency', v.env.max_concurrency) }}
       <input name="max_concurrency" type="number" min="1" max="64" value="{{ d.max_concurrency if d else v.stored.get('ai_max_concurrency', '') }}" placeholder="{{ v.env.max_concurrency }}" {{ 'disabled' if not can }}></label>
@@ -54,13 +54,7 @@
       <input name="timeout" type="number" min="5" max="300" step="1" value="{{ d.timeout if d else v.stored.get('ai_timeout', '') }}" placeholder="{{ v.env.timeout|int }}" {{ 'disabled' if not can }}></label>
   </div>
 
-  <h2>AI requests per day, by plan</h2>
-  <p class="muted small">How many AI requests (one per call to the model) a member on each plan may make per day, resetting at midnight UTC. Every paid plan starts at 100; a lower number is not accepted. Blank uses the plan's default. Members without a plan get only the free trial requests above.</p>
-  <table>
-    <thead><tr><th>Plan</th><th>Price</th><th>Default</th><th>Per day</th></tr></thead>
-    {% for p in v.plans %}<tr><td>{{ p.plan }}</td><td>${{ p.price }}</td><td>{{ '{:,}'.format(p.default) }}</td>
-      <td><input name="daily_{{ p.plan }}" type="number" min="100" max="100000" step="10" value="{{ d['daily_' ~ p.plan] if d else (p.stored if p.stored is not none else '') }}" placeholder="{{ p.default }}" {{ 'disabled' if not can }}></td></tr>{% endfor %}
-  </table>
+  <p class="muted small">Paid plans have unlimited AI requests. Provider availability, provider-side limits, and platform fair-use protections still apply.</p>
 
   <details><summary><b>Advanced</b></summary>
     <div class="row" style="margin-top:10px">

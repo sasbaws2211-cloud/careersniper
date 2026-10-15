@@ -195,10 +195,10 @@ async def run(db: AsyncSession, member: Member, r: Resume, flt: Filters = NO_FIL
     """Find and rank matches, remember the outcome on the résumé, and return it. Raises ai.AIError."""
     need = credits_needed(r)
     c = await ai.credits(db, member)
-    if c["left"] < need:
+    if not c["unlimited"] and c["left"] < need:
         if c["trial"]:
             raise ai.AIError("AI tools are part of a paid plan. Subscribe to unlock job matching, cover letters and interview practice.", 402)
-        raise ai.AIError(f"A job match needs {need:,} AI request{'s' if need != 1 else ''} and you have {c['left']:,} left today. They reset at midnight UTC.", 429)
+        raise ai.AIError("AI requests are temporarily unavailable. Please try again later.", 503)
     profile, _ = await get_profile(db, member, r)
     cands = await retrieve(db, profile, flt)
     note, items = "", []

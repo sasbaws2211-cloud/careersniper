@@ -299,21 +299,14 @@ def extract_json(text: str):
 
 
 # ---------------------------------------------------------------- who may use it, and how much
-async def daily_limit(db: AsyncSession, member: Member) -> int:
-    """AI requests per day this member may make: set by their plan; 0 without a paid plan (the free requests aside)."""
+async def daily_limit(db: AsyncSession, member: Member) -> int | None:
+    """None for unlimited paid-plan access, or zero when the member has no paid plan."""
     sub = await billing.current_subscription(db, email=member.email)
     if sub and sub.current_period_end and sub.current_period_end > datetime.utcnow():
-        return await plan_daily(sub.plan)
+        return None
     if config.free_access():                                   # development with billing off behaves like a monthly plan
-        return await plan_daily("monthly")
+        return None
     return 0
-
-
-async def plan_daily(plan: str) -> int:
-    """AI requests a day on this plan: what an admin set, else the plan's default in config. Never below the 100 every paid plan starts at."""
-    stored = await runtime_settings.get(f"ai_requests_{plan}")
-    value = int(stored if stored is not None else (config.CONSUMER_PLANS.get(plan, {}).get("ai_requests_daily") or 0))
-    return max(config.MIN_PAID_DAILY_REQUESTS, value)
 
 
 async def free_trials() -> int:
@@ -334,15 +327,13 @@ async def used_ever(db: AsyncSession, member: Member) -> int:
 
 
 async def credits(db: AsyncSession, member: Member, now: datetime | None = None) -> dict:
-    """{'limit', 'used', 'left', 'trial'}, all in requests (one per call to the model), for the tool pages and for run().
-    A call is allowed while any requests are left."""
+    """Request access details for tool pages and run(); paid plans have unlimited requests."""
     limit = await daily_limit(db, member)
-    if limit:
-        used = await used_today(db, member, now)
-        return {"limit": limit, "used": used, "left": max(0, limit - used), "trial": False}
+    if limit is None:
+        return {"limit": None, "used": await used_today(db, member, now), "left": None, "trial": False, "unlimited": True}
     trials = await free_trials()
     used = await used_ever(db, member)
-    return {"limit": trials, "used": min(used, trials), "left": max(0, trials - used), "trial": True}
+    return {"limit": trials, "used": min(used, trials), "left": max(0, trials - used), "trial": True, "unlimited": False}
 
 
 async def run(db: AsyncSession, member: Member, tool: str, system: str, user: str, max_tokens: int = 1200, want_json: bool = False,
@@ -352,11 +343,11 @@ async def run(db: AsyncSession, member: Member, tool: str, system: str, user: st
         raise AIError("AI tools are not available right now.", 503)
     if not getattr(member, "verified", True):
         raise AIError("Confirm your email to use the AI tools. We sent you a link; use the button at the top of the page to resend it.", 403)
-    c = await credits(db, member) if charge else {"left": 1, "trial": False, "limit": 0}
-    if c["left"] <= 0:
+    c = await credits(db, member) if charge else {"left": 1, "trial": False, "limit": 0, "unlimited": False}
+    if not c["unlimited"] and c["left"] <= 0:
         if c["trial"]:
             raise AIError("AI tools are part of a paid plan. Subscribe to unlock résumé help, job matching and interview practice.", 402)
-        raise AIError(f"You have used today's {c['limit']:,} AI requests. They reset at midnight UTC.", 429)
+        raise AIError(f"You have used your {c['limit']:,} free AI requests. Subscribe to continue using AI tools.", 402)
     result = await complete(system, user, max_tokens=max_tokens, want_json=want_json, timeout=timeout)
     db.add(AiUsage(member_id=member.id, tool=(tool if charge else FREE_PREFIX + tool)[:30], model=result.model[:60],
                    input_tokens=result.input_tokens, output_tokens=result.output_tokens))

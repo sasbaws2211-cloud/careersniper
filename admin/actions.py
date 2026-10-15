@@ -249,7 +249,6 @@ async def set_admin_password(db: AsyncSession, admin: Admin, user_id: int, passw
 # ---------------------------------------------------------------- AI settings (platform-wide)
 AI_PROVIDERS = ("anthropic", "openai", "openai_compatible")
 TOKEN_PARAMS = ("max_tokens", "max_completion_tokens")
-PLAN_KEYS = {"pass": "ai_requests_pass", "weekly": "ai_requests_weekly", "monthly": "ai_requests_monthly", "lifetime": "ai_requests_lifetime"}
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 AI_KEYS = tuple(k for k in runtime_settings.KEYS if k.startswith("ai_"))
 
@@ -324,8 +323,6 @@ def parse_ai_form(form: dict) -> tuple[dict, list[str]]:
     ch["ai_max_output_tokens"] = _number(form.get("max_output_tokens"), "Maximum answer length", 100, 8000, True, problems)
     ch["ai_max_concurrency"] = _number(form.get("max_concurrency"), "Calls at once", 1, 64, True, problems)
     ch["ai_free_requests"] = _number(form.get("free_trials"), "Free trial requests", 0, 10_000, True, problems)
-    for plan, key in PLAN_KEYS.items():
-        ch[key] = _number(form.get(f"daily_{plan}"), f"Daily requests on {plan}", 100, 100_000, True, problems)
     key = (form.get("api_key") or "").strip()
     if form.get("remove_key") == "on":
         ch["ai_api_key"] = None

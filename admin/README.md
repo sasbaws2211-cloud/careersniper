@@ -39,7 +39,7 @@ In production the database schema comes from migrations (`alembic upgrade head`,
 ## AI settings
 
 Open **AI settings** to choose the provider and model for job match, cover letters, tailored résumés and interview coaching, paste the API key, and
-set the limits: free trial requests, requests per day for each plan, calls at once, longest answer and timeout. Everything here is stored in the
+set the lifetime free-trial requests per member, calls at once, longest answer and timeout. Paid plans have unlimited AI requests. Everything here is stored in the
 database and read by the public site, so **a change reaches the site within about 10 seconds, with no restart**. A value that is not set here falls back to the
 server's environment variable (`AI_PROVIDER`, `AI_MODEL`, `ANTHROPIC_API_KEY` ...), so an existing setup keeps working.
 

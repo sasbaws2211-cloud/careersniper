@@ -22,7 +22,7 @@
       does not show is listed as a gap, with a line-by-line view of what is covered.</p>
     <label>Anything you want it to stress? <span class="muted">(optional)</span>
       <textarea name="emphasis" rows="3" maxlength="500" style="width:100%;box-sizing:border-box" placeholder="e.g. put my payments work first">{{ emphasis }}</textarea></label>
-    <p class="muted" style="font-size:13px">Uses AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left{% if credits.trial %} in your free trial{% else %} today{% endif %}). Your <a href="/resume">saved résumé</a> stays unchanged.</p>
+    <p class="muted" style="font-size:13px">Uses AI requests ({% if credits.trial %}{{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left in your free trial{% else %}unlimited on your plan; provider availability and fair-use protections apply{% endif %}). Your <a href="/resume">saved résumé</a> stays unchanged.</p>
     <button type="submit" id="tailor-go">Tailor my résumé</button>
     <p id="tailor-wait" class="muted" style="display:none;margin:10px 0 0" role="status">Reading the job and writing your résumé. A full rewrite with a fact-check takes one to three minutes: please keep this page open.</p>
   </form>

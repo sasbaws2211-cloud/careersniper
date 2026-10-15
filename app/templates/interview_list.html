@@ -18,7 +18,7 @@
     </div>
     <label style="display:block;margin-top:10px">Paste the job description <span class="muted">(optional, makes the questions much better)</span>
       <textarea name="posting" rows="5" maxlength="6000" style="width:100%;box-sizing:border-box">{{ form.posting }}</textarea></label>
-    <p class="muted" style="font-size:13px">Making the questions and giving feedback on each answer use AI requests ({{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left today).
+    <p class="muted" style="font-size:13px">Making the questions and giving feedback on each answer use AI requests ({% if credits.trial %}{{ '{:,}'.format(credits.left) }} of {{ '{:,}'.format(credits.limit) }} left in your free trial{% else %}unlimited on your plan; provider availability and fair-use protections apply{% endif %}).
       {% if not has_resume %}Add your <a href="/resume">résumé</a> for questions about your own experience.{% endif %}</p>
     <button type="submit">Make my practice questions</button>
   </form>

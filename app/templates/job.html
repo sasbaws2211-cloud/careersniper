@@ -73,7 +73,7 @@
     <h2 style="margin-top:0;font-size:1.05rem">How your résumé fits this job</h2>
     {% if request.query_params.get('coach') == 'upgrade' %}<div class="err">The résumé coach is part of a paid plan. <a href="/pricing">See plans</a></div>
     {% elif request.query_params.get('coach') == 'confirm' %}<div class="err">Confirm your email to use the AI tools. Use the button at the top of the page to resend the link.</div>
-    {% elif request.query_params.get('coach') == 'limit' %}<div class="err">You have used today's AI requests. They reset at midnight UTC.</div>
+    {% elif request.query_params.get('coach') == 'limit' %}<div class="err">AI requests are temporarily unavailable. Please try again later.</div>
     {% elif request.query_params.get('coach') == 'error' %}<div class="err">The AI service could not answer just now. Please try again in a moment.</div>{% endif %}
     {% if not coach_resume %}
       <p class="muted" style="margin:0">Upload your résumé and we will tell you what to change to fit this job. <a href="/resume">Upload your résumé &rarr;</a></p>
@@ -99,8 +99,8 @@
     {% else %}
       <p class="muted" style="margin:0 0 10px">See what your résumé already shows for this job, what is missing, and the edits worth making before you apply.
         {% if coach_credits.trial %}This is part of your <b>free trial</b>: {{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} requests left, then a paid plan is needed.
-        {% else %}({{ '{:,}'.format(coach_credits.left) }} of {{ '{:,}'.format(coach_credits.limit) }} left today.){% endif %}
-        Requests count toward your daily allowance, not a separate one-request step limit. Advice is cached for this résumé and job.</p>
+        {% else %}(unlimited on your plan.){% endif %}
+        Provider availability and fair-use protections apply. Advice is cached for this résumé and job.</p>
       <form method="post" action="/jobs/{{ job.id }}/coach" style="margin:0"><button type="submit">Check my résumé for this job</button></form>
     {% endif %}
   </section>
