@@ -1,7 +1,8 @@
 # CareerSniper platform admin
 
-A separate web app for running the platform: its own process, port, login and session. It shares the database with the public site and
+A separate web app for running the platform: its own login and session. It shares the database with the public site and
 uses the site's own code for anything that has to behave identically (refunds, withdrawing a referral reward, deleting a member, scraping a company).
+The public app also mounts it at `/platform-admin`, so a single Render web service can serve both the public site and the full admin dashboard.
 
 ## Run it
 
@@ -13,9 +14,11 @@ python -m admin run                                       # http://127.0.0.1:803
 It reads the same `DATABASE_URL` as the public site. Other commands: `list-admins`, `set-password <email>`.
 For scripts, `ADMIN_NEW_PASSWORD` supplies the password instead of the prompt.
 
+When using the main site service, open `https://<your-render-domain>/platform-admin/login`. Set `APP_ENV=production` and `ADMIN_SECRET_KEY` in Render (use a unique random value of at least 32 characters). To create the first owner without Render Shell access, temporarily set `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` in the Render environment settings, then deploy. The password must follow the rules below. On startup, the app creates an owner only if no active admin exists; it never changes an existing account's password. After the deploy succeeds, remove both bootstrap variables from Render and deploy again. The admin dashboard uses the same database as the public site. Keep the login protected with a strong, unique password; an access proxy is recommended for a public Render domain.
+
 | Setting | Default | Meaning |
 |---|---|---|
-| `ADMIN_ENV` | `development` | `production` makes the app refuse to start with an unsafe setup, and turns on HTTPS-only cookies and HSTS |
+| `ADMIN_ENV` | `APP_ENV` (development locally) | `production` makes the app refuse to start with an unsafe setup, and turns on HTTPS-only cookies and HSTS |
 | `ADMIN_SECRET_KEY` | random per start (dev) | Signs the session cookie. **Required in production**, 32+ random characters. Different from the public site's `SECRET_KEY` on purpose |
 | `ADMIN_HOST` / `ADMIN_PORT` | `127.0.0.1` / `8030` | Keep it on loopback and reach it over a VPN, SSH tunnel or an access proxy (Cloudflare Access, Tailscale ...). Do not publish it on the open internet |
 | `ADMIN_SESSION_HOURS` | `8` | A sign-in never lasts longer than this |

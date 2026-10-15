@@ -28,11 +28,11 @@
 
 <div class="cols two">
   <section class="card"><h2>Newest members</h2>
-    <table>{% for m in d.recent_members %}<tr><td><a href="/members/{{ m.id }}">{{ m.email }}</a></td><td>{{ 'confirmed' if m.verified else 'unconfirmed' }}</td><td class="muted">{{ m.created_at|ago }}</td></tr>{% else %}<tr><td class="muted">No members yet.</td></tr>{% endfor %}</table></section>
+    <table>{% for m in d.recent_members %}<tr><td><a href="{{ admin_url('/members/' ~ m.id) }}">{{ m.email }}</a></td><td>{{ 'confirmed' if m.verified else 'unconfirmed' }}</td><td class="muted">{{ m.created_at|ago }}</td></tr>{% else %}<tr><td class="muted">No members yet.</td></tr>{% endfor %}</table></section>
   <section class="card"><h2>Latest payments</h2>
     <table>{% for p in d.recent_payments %}<tr><td>{{ p.customer_email }}</td><td>{{ p.plan }}</td><td>{{ p.amount_cents|money(p.currency) }}</td><td><span class="tag {{ 'ok' if p.status == 'paid' else ('err' if p.status == 'failed' else '') }}">{{ p.status }}</span></td></tr>{% else %}<tr><td class="muted">No payments yet.</td></tr>{% endfor %}</table></section>
 </div>
 <section class="card"><h2>Latest admin activity</h2>
   <table>{% for a in d.recent_audit %}<tr><td>{{ a.admin_email }}</td><td><code>{{ a.action }}</code></td><td>{{ a.target }}</td><td class="muted">{{ a.created_at|ago }}</td></tr>{% else %}<tr><td class="muted">Nothing yet.</td></tr>{% endfor %}</table>
-  <p class="small"><a href="/audit">Full audit log</a></p></section>
+  <p class="small"><a href="{{ admin_url('/audit') }}">Full audit log</a></p></section>
 {% endblock %}

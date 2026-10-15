@@ -6,7 +6,7 @@
 <form method="get" class="filters">
   <input name="action" value="{{ action }}" placeholder="Action, e.g. member or company.add" aria-label="Action">
   <input name="who" value="{{ who }}" placeholder="Admin email" aria-label="Admin">
-  <button type="submit">Filter</button>{% if action or who %}<a class="btn ghost" href="/audit">Clear</a>{% endif %}
+  <button type="submit">Filter</button>{% if action or who %}<a class="btn ghost" href="{{ admin_url('/audit') }}">Clear</a>{% endif %}
 </form>
 <div class="card flush"><table>
   <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th><th>From</th></tr></thead>

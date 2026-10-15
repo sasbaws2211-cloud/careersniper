@@ -15,7 +15,7 @@
 {% if v.unreadable %}<div class="flash err" role="alert">The stored API key cannot be decrypted, so it is being ignored. The public site and this app must run with the same <code>SECRET_KEY</code> (or <code>SETTINGS_SECRET</code>). Enter the key again after fixing that.</div>{% endif %}
 {% if not can %}<p class="muted small">You can see these settings. Only an owner can change them.</p>{% endif %}
 
-<form method="post" action="/settings/ai" class="card stack" autocomplete="off">
+<form method="post" action="{{ admin_url('/settings/ai') }}" class="card stack" autocomplete="off">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% if draft_token %}<input type="hidden" name="draft_token" value="{{ draft_token }}">{% endif %}
 
@@ -77,19 +77,19 @@
   {% if can %}
   <div class="row">
     <button type="submit">Save settings</button>
-    <button type="submit" class="ghost" formaction="/settings/ai/test" title="Sends one tiny request using the values above, saved or not">Test these values</button>
+    <button type="submit" class="ghost" formaction="{{ admin_url('/settings/ai/test') }}" title="Sends one tiny request using the values above, saved or not">Test these values</button>
   </div>
   <p class="muted small">“Test these values” sends one small real request to the provider (a few tokens) using what is in the form. It saves nothing.</p>
   {% endif %}
 </form>
 
 {% if can %}
-<form method="post" action="/settings/ai/reset" class="card" data-confirm="Forget everything set here and go back to the server's environment variables?">
+<form method="post" action="{{ admin_url('/settings/ai/reset') }}" class="card" data-confirm="Forget everything set here and go back to the server's environment variables?">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <b>Reset</b> <span class="muted small">Forget every AI setting stored here, including the saved key, and use the server's environment variables again.</span>
   <div><button class="ghost" type="submit">Reset to the environment</button></div>
 </form>
 {% endif %}
 
-{% if v.last_change %}<p class="muted small">Last changed {{ v.last_change.updated_at|ago }} by {{ v.last_change.updated_by }}. Every change is in the <a href="/audit?action=ai">audit log</a> (the key itself is never logged).</p>{% endif %}
+{% if v.last_change %}<p class="muted small">Last changed {{ v.last_change.updated_at|ago }} by {{ v.last_change.updated_by }}. Every change is in the <a href="{{ admin_url('/audit?action=ai') }}">audit log</a> (the key itself is never logged).</p>{% endif %}
 {% endblock %}

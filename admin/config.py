@@ -2,7 +2,7 @@
 import os
 import secrets
 
-ENV = os.getenv("ADMIN_ENV", "development")
+ENV = os.getenv("ADMIN_ENV", os.getenv("APP_ENV", "development"))
 IS_PROD = ENV.lower() == "production"
 SECRET_KEY = os.getenv("ADMIN_SECRET_KEY", "")
 SESSION_HOURS = float(os.getenv("ADMIN_SESSION_HOURS", "8"))          # a login never lasts longer than this

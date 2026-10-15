@@ -3,9 +3,9 @@
 {% block content %}
 <h1>Billing</h1>
 <div class="tabs">
-  <a href="/billing?tab=payments" class="{{ 'on' if tab == 'payments' }}">Payments</a>
-  <a href="/billing?tab=subscriptions" class="{{ 'on' if tab == 'subscriptions' }}">Plans</a>
-  <a href="/billing?tab=events" class="{{ 'on' if tab == 'events' }}">Provider events</a>
+  <a href="{{ admin_url('/billing?tab=payments') }}" class="{{ 'on' if tab == 'payments' }}">Payments</a>
+  <a href="{{ admin_url('/billing?tab=subscriptions') }}" class="{{ 'on' if tab == 'subscriptions' }}">Plans</a>
+  <a href="{{ admin_url('/billing?tab=events') }}" class="{{ 'on' if tab == 'events' }}">Provider events</a>
 </div>
 
 {% if tab == 'payments' %}
@@ -15,7 +15,7 @@
 <div class="card flush"><table>
   <thead><tr><th>When</th><th>Customer</th><th>Plan</th><th>Amount</th><th>Status</th><th>Reference</th></tr></thead>
   {% for c in rows %}<tr><td class="muted">{{ (c.completed_at or c.created_at)|dt }}</td>
-    <td>{% if ids.get(c.customer_email) %}<a href="/members/{{ ids[c.customer_email] }}">{{ c.customer_email }}</a>{% else %}{{ c.customer_email }}{% endif %}</td>
+    <td>{% if ids.get(c.customer_email) %}<a href="{{ admin_url('/members/' ~ ids[c.customer_email]) }}">{{ c.customer_email }}</a>{% else %}{{ c.customer_email }}{% endif %}</td>
     <td>{{ c.plan }}</td><td>{{ c.amount_cents|money(c.currency) }}</td>
     <td><span class="tag {{ 'ok' if c.status == 'paid' else ('err' if c.status == 'failed' else '') }}">{{ c.status }}</span></td><td><code>{{ c.tx_ref }}</code></td></tr>
   {% else %}<tr><td colspan="6" class="muted">No payments.</td></tr>{% endfor %}</table></div>
@@ -26,7 +26,7 @@
 <div class="card flush"><table>
   <thead><tr><th>Customer</th><th>Plan</th><th>Status</th><th>Paid</th><th>Ends</th></tr></thead>
   {% for s in rows %}<tr>
-    <td>{% if ids.get(s.customer_email) %}<a href="/members/{{ ids[s.customer_email] }}">{{ s.customer_email }}</a>{% else %}{{ s.customer_email }}{% endif %}</td>
+    <td>{% if ids.get(s.customer_email) %}<a href="{{ admin_url('/members/' ~ ids[s.customer_email]) }}">{{ s.customer_email }}</a>{% else %}{{ s.customer_email }}{% endif %}</td>
     <td>{{ s.plan }}</td><td>{{ s.status }}</td><td>{{ 'free' if s.amount_cents == 0 else (s.amount_cents|money(s.currency)) }}</td><td>{{ s.current_period_end|dt }}</td></tr>
   {% else %}<tr><td colspan="5" class="muted">No plans.</td></tr>{% endfor %}</table></div>
 {% else %}

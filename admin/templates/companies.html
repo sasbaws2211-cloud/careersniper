@@ -4,7 +4,7 @@
 <h1>Companies and scraping</h1>
 
 <details class="card"><summary><b>+ Add a company</b></summary>
-  <form method="post" action="/companies/add" class="stack">
+  <form method="post" action="{{ admin_url('/companies/add') }}" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="row">
       <label>Name<input name="name" required maxlength="200" placeholder="Acme"></label>
@@ -21,7 +21,7 @@
   <select name="flt" aria-label="Show">
     {% for v, l in [('', 'All companies'), ('errors', 'With a scrape error'), ('stale', 'Not scraped for 12 hours'), ('never', 'Never scraped'), ('inactive', 'Switched off')] %}<option value="{{ v }}" {{ 'selected' if flt == v }}>{{ l }}</option>{% endfor %}
   </select>
-  <button type="submit">Filter</button>{% if q or flt %}<a class="btn ghost" href="/companies">Clear</a>{% endif %}
+  <button type="submit">Filter</button>{% if q or flt %}<a class="btn ghost" href="{{ admin_url('/companies') }}">Clear</a>{% endif %}
 </form>
 
 <div class="card flush"><table>
@@ -34,8 +34,8 @@
     <td class="muted">{{ c.last_scraped|ago }}</td>
     <td>{% if not c.active %}<span class="tag">off</span>{% elif c.last_error %}<span class="tag err" title="{{ c.last_error }}">error</span> <span class="muted small">{{ c.last_error[:60] }}</span>{% else %}<span class="tag ok">ok</span>{% endif %}</td>
     <td class="actions">
-      <form method="post" action="/companies/{{ c.id }}/scrape"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">Scrape now</button></form>
-      <form method="post" action="/companies/{{ c.id }}/toggle" data-confirm="{{ 'Switch this company off? Its jobs disappear from the site.' if c.active else 'Switch it back on?' }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">{{ 'Switch off' if c.active else 'Switch on' }}</button></form>
+      <form method="post" action="{{ admin_url('/companies/' ~ c.id ~ '/scrape') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">Scrape now</button></form>
+      <form method="post" action="{{ admin_url('/companies/' ~ c.id ~ '/toggle') }}" data-confirm="{{ 'Switch this company off? Its jobs disappear from the site.' if c.active else 'Switch it back on?' }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="/companies?q={{ q|urlencode }}&flt={{ flt }}&page={{ page }}"><button class="ghost small" type="submit">{{ 'Switch off' if c.active else 'Switch on' }}</button></form>
     </td>
   </tr>
   {% else %}<tr><td colspan="6" class="muted">No companies match.</td></tr>{% endfor %}

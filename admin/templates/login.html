@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Sign in{% endblock %}
 {% block solo %}
-<form method="post" action="/login" class="login card">
+<form method="post" action="{{ admin_url('/login') }}" class="login card">
   <h1>CareerSniper admin</h1>
   <p class="muted small">Staff only. Every sign-in and every change is logged.</p>
   {% if error %}<div class="flash err" role="alert">{{ error }}</div>{% endif %}

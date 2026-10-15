@@ -8,6 +8,7 @@ RUN pip install -r requirements.txt
 COPY alembic.ini .
 COPY migrations migrations
 COPY app app
+COPY admin admin
 COPY data/candidates.txt data/candidates.txt
 
 # run as an unprivileged user

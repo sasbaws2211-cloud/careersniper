@@ -9,18 +9,18 @@
     <td><span class="tag {{ 'ok' if u.role == 'owner' else ('err' if u.role == 'disabled' else '') }}">{{ u.role }}</span></td><td class="muted">{{ u.created_at|dt('%d %b %Y') }}</td>
     <td class="actions">
       {% if u.role in ('owner', 'admin') and (admin.is_owner or u.id == admin.id) %}
-      <form method="post" action="/admins/{{ u.id }}/password" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <form method="post" action="{{ admin_url('/admins/' ~ u.id ~ '/password') }}" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}">
         <input type="password" name="password" placeholder="New password" autocomplete="new-password" required aria-label="New password"><button class="ghost small" type="submit">Set password</button></form>
       {% endif %}
       {% if admin.is_owner and u.role in ('owner', 'admin') and u.id != admin.id %}
-      <form method="post" action="/admins/{{ u.id }}/disable" data-confirm="Switch this admin off?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small" type="submit">Switch off</button></form>
+      <form method="post" action="{{ admin_url('/admins/' ~ u.id ~ '/disable') }}" data-confirm="Switch this admin off?"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small" type="submit">Switch off</button></form>
       {% endif %}
     </td></tr>
   {% endfor %}</table></div>
 
 {% if admin.is_owner %}
 <section class="card"><h2>Add an admin</h2>
-  <form method="post" action="/admins/create" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <form method="post" action="{{ admin_url('/admins/create') }}" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="row">
       <label>Email<input name="email" type="email" required autocomplete="off"></label>
       <label>Password<input name="password" type="password" required autocomplete="new-password"></label>

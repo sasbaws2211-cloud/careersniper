@@ -12,6 +12,6 @@
     <table><thead><tr><th>Tool</th><th>Calls</th><th>Avg in</th><th>Avg out</th></tr></thead>
     {% for tool, n, tin, tout in r.per_tool %}<tr><td>{{ tool }}</td><td>{{ n }}</td><td>{{ (tin / n)|round|int }}</td><td>{{ (tout / n)|round|int }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No AI calls yet.</td></tr>{% endfor %}</table></section>
   <section class="card flush"><h2 class="pad">Heaviest users (7 days)</h2>
-    <table>{% for id, email, n in r.top %}<tr><td><a href="/members/{{ id }}">{{ email }}</a></td><td>{{ n }} requests</td></tr>{% else %}<tr><td class="muted">Nobody yet.</td></tr>{% endfor %}</table></section>
+    <table>{% for id, email, n in r.top %}<tr><td><a href="{{ admin_url('/members/' ~ id) }}">{{ email }}</a></td><td>{{ n }} requests</td></tr>{% else %}<tr><td class="muted">Nobody yet.</td></tr>{% endfor %}</table></section>
 </div>
 {% endblock %}

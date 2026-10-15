@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import os
 import re
 import secrets
 import uuid
@@ -27,6 +28,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
+from admin import config as admin_config
+from admin import actions as admin_actions
+from admin.main import app as platform_admin_app
+
 from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt
 from . import search as search_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
@@ -51,6 +56,34 @@ templates.env.globals.update(PLATFORM=config.PLATFORM_NAME, PLANS=config.PLANS, 
                              REFUND_DAYS=config.REFUND_DAYS, SUPPORT_EMAIL=config.SUPPORT_EMAIL)
 RESERVED = {"www", "app", "admin", "api", "static", "login", "signup", "mail"}
 PAGE = 20
+
+
+async def _bootstrap_admin_from_environment() -> None:
+    email = os.getenv("ADMIN_BOOTSTRAP_EMAIL", "")
+    password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "")
+    if not email and not password:
+        return
+    if not email or not password:
+        raise RuntimeError("Set both ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD, or remove both.")
+
+    async with SessionLocal() as db:
+        existing = await db.scalar(select(User).where(User.role.in_(admin_actions.ROLES)).limit(1))
+        if existing:
+            logging.getLogger("careersniper.admin").warning(
+                "Admin bootstrap was skipped because an active admin already exists; remove "
+                "ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD from the service environment."
+            )
+            return
+        try:
+            await admin_actions.create_admin(
+                db, None, email, password, "owner", ip="render-bootstrap", by="environment-bootstrap"
+            )
+        except admin_actions.AdminError as exc:
+            raise RuntimeError(f"Could not bootstrap the initial admin: {exc}") from exc
+    logging.getLogger("careersniper.admin").warning(
+        "Initial owner created from bootstrap environment variables. Remove "
+        "ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD from the service environment."
+    )
 
 
 SCHEDULER_LOCK_ID = 727274   # arbitrary app-wide key for the Postgres advisory lock
@@ -108,6 +141,11 @@ async def lifespan(app):
     if fatal:
         raise RuntimeError("Refusing to start in production with an unsafe configuration:\n  - " + "\n  - ".join(fatal)
                            + "\nRun `python -m app.cli doctor` for details.")
+    admin_problems = admin_config.problems()
+    if admin_problems and admin_config.IS_PROD:
+        raise RuntimeError("Refusing to start the admin app:\n  - " + "\n  - ".join(admin_problems))
+    for problem in admin_problems:
+        logging.getLogger("careersniper.admin").warning("config: %s", problem)
     if config.SENTRY_DSN:
         try:
             import sentry_sdk
@@ -117,6 +155,7 @@ async def lifespan(app):
     if config.SCHEMA_MODE == "migrations" and not schema.is_current():
         raise RuntimeError(f"The database schema ({schema.current_revision() or 'empty'}) is behind this version of the app "
                            f"({schema.head_revision()}). Run `alembic upgrade head` before starting the app.")
+    await _bootstrap_admin_from_environment()
     await search_mod.ensure_fts()
     await dedupe.backfill()
     async with SessionLocal() as db:
@@ -132,6 +171,7 @@ app = FastAPI(title=config.PLATFORM_NAME, lifespan=lifespan,
               openapi_url=None if config.IS_PROD else "/openapi.json")   # no public API schema in production
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY, same_site="lax", https_only=config.IS_PROD, max_age=60 * 60 * 24 * 14)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+app.mount("/platform-admin", platform_admin_app, name="platform-admin")
 _RID = re.compile(r"^[A-Za-z0-9-]{8,64}$")
 
 

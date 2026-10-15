@@ -80,6 +80,14 @@ def _ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
+def _admin_url(request: Request, path: str) -> str:
+    prefix = request.scope.get("root_path", "").rstrip("/")
+    path = "/" + path.lstrip("/")
+    if not prefix or path == prefix or path.startswith(prefix + "/"):
+        return path
+    return prefix + path
+
+
 async def current_admin(request: Request, db: AsyncSession = Depends(get_db)) -> Admin | None:
     s = request.session
     uid, iat, seen = s.get("uid"), s.get("iat"), s.get("seen")
@@ -127,7 +135,8 @@ def flash(request: Request, message: str, kind: str = "ok") -> None:
 
 def render(request: Request, name: str, admin: Admin | None = None, code: int = 200, now_flashes: list | None = None, **ctx):
     flashes = request.session.pop("flash", []) + (now_flashes or [])
-    return templates.TemplateResponse(request, name, dict(admin=admin, csrf=csrf_token(request), flashes=flashes, nav=name.split(".")[0], **ctx), status_code=code)
+    return templates.TemplateResponse(request, name, dict(admin=admin, csrf=csrf_token(request), flashes=flashes, nav=name.split(".")[0],
+                                                          admin_url=lambda path: _admin_url(request, path), **ctx), status_code=code)
 
 
 async def do(request: Request, db: AsyncSession, fn, back: str):
@@ -139,7 +148,7 @@ async def do(request: Request, db: AsyncSession, fn, back: str):
             raise HTTPException(e.status, str(e))
         await db.rollback()
         flash(request, str(e), "err")
-    return RedirectResponse(back, status_code=303)
+    return RedirectResponse(_admin_url(request, back), status_code=303)
 
 
 # ---------------------------------------------------------------- headers
@@ -158,10 +167,12 @@ async def headers(request: Request, call_next):
 @app.exception_handler(HTTPException)
 async def http_error(request: Request, exc: HTTPException):
     if exc.status_code in (301, 302, 303, 307) and exc.headers and "Location" in exc.headers:
-        return RedirectResponse(exc.headers["Location"], status_code=303)
+        return RedirectResponse(_admin_url(request, exc.headers["Location"]), status_code=303)
     if request.url.path == "/health":
         return JSONResponse({"ok": False}, status_code=exc.status_code)
-    return templates.TemplateResponse(request, "error.html", dict(admin=None, csrf="", flashes=[], nav="", code=exc.status_code, message=str(exc.detail)), status_code=exc.status_code)
+    return templates.TemplateResponse(request, "error.html", dict(admin=None, csrf="", flashes=[], nav="", code=exc.status_code,
+                                                                  message=str(exc.detail), admin_url=lambda path: _admin_url(request, path)),
+                                      status_code=exc.status_code)
 
 
 @app.get("/health")
@@ -173,7 +184,7 @@ def health():
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, admin: Admin | None = Depends(current_admin)):
     if admin:
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse(_admin_url(request, "/"), status_code=303)
     return render(request, "login.html", error="")
 
 
@@ -197,7 +208,7 @@ async def login(request: Request, db: AsyncSession = Depends(get_db), email: str
     request.session.update({"uid": u.id, "ph": u.password_hash[-10:], "iat": now, "seen": now, "csrf": security.new_token()})
     actions.audit(db, u.email, "login", ip=ip)
     await db.commit()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse(_admin_url(request, "/"), status_code=303)
 
 
 @app.post("/logout")
@@ -205,7 +216,7 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db), admin: Ad
     actions.audit(db, admin.email, "logout", ip=_ip(request))
     await db.commit()
     request.session.clear()
-    return RedirectResponse("/login", status_code=303)
+    return RedirectResponse(_admin_url(request, "/login"), status_code=303)
 
 
 # ---------------------------------------------------------------- dashboard
@@ -256,9 +267,9 @@ async def member_delete(member_id: int, request: Request, db: AsyncSession = Dep
             raise HTTPException(e.status, str(e))
         await db.rollback()
         flash(request, str(e), "err")
-        return RedirectResponse(f"/members/{member_id}", status_code=303)
+        return RedirectResponse(_admin_url(request, f"/members/{member_id}"), status_code=303)
     flash(request, message)
-    return RedirectResponse("/members", status_code=303)
+    return RedirectResponse(_admin_url(request, "/members"), status_code=303)
 
 
 # ---------------------------------------------------------------- billing
@@ -420,7 +431,7 @@ async def ai_settings_save(request: Request, db: AsyncSession = Depends(get_db),
             raise HTTPException(e.status, str(e))
         await db.rollback()
         return await _ai_page(request, db, admin, form, [["err", str(e)]], 400)       # keep what was typed: do not make the admin start again
-    return RedirectResponse("/settings/ai", status_code=303)
+    return RedirectResponse(_admin_url(request, "/settings/ai"), status_code=303)
 
 
 @app.post("/settings/ai/test")
