@@ -111,7 +111,7 @@
   </p>
   <div class="cta">
     <a class="btn-primary" href="/jobs">Browse free preview</a>
-    <a class="btn-secondary" href="/pricing">See pricing</a>
+    <a class="btn-secondary" href="{% if memail %}/pricing{% else %}/member/signup?next=%2Fonboarding%3Fwelcome%3D1{% endif %}">See pricing</a>
   </div>
   {% if stats %}
   <div class="counter" aria-label="Live job counts">
@@ -209,7 +209,7 @@
 
 <div class="mid-cta">
   <a class="btn-primary" href="/jobs" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none">Browse free preview</a>
-  <a href="/pricing" style="display:inline-block;margin-left:12px;color:#1d4ed8;font-weight:700;padding:14px 18px;text-decoration:none">See plans &amp; pricing &rarr;</a>
+  <a href="{% if memail %}/pricing{% else %}/member/signup?next=%2Fonboarding%3Fwelcome%3D1{% endif %}" style="display:inline-block;margin-left:12px;color:#1d4ed8;font-weight:700;padding:14px 18px;text-decoration:none">See plans &amp; pricing &rarr;</a>
 </div>
 
 

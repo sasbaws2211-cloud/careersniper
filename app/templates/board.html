@@ -49,14 +49,16 @@
 </div>
 
 {% if is_preview is defined and is_preview %}
+{% set onboarding_pricing = ('/onboarding?welcome=1&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
+{% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
 <div class="card" style="background:#eff6ff;border-color:#93c5fd;margin-bottom:16px;color:#1f2937;">
   <b>You're viewing a free preview.</b>
   {% if total > (jobs|length) %}
     <span>{{ total - (jobs|length) }} more matching job{{ '' if (total - jobs|length) == 1 else 's' }} are behind the paywall.</span>
   {% endif %}
   Unlock the full database, all filters, and direct apply from $7/week.
-  <a class="btn" href="/pricing" style="margin-left:8px">See plans</a>
-  <a class="btn" href="/checkout?plan=monthly" style="margin-left:6px;background:#111">Get Monthly — $20</a>
+  <a class="btn" href="{% if memail %}/pricing{% else %}/member/signup?next={{ onboarding_pricing }}{% endif %}" style="margin-left:8px">See plans</a>
+  <a class="btn" href="{% if memail %}/checkout?plan=monthly{% else %}/member/signup?next={{ onboarding_monthly }}{% endif %}" style="margin-left:6px;background:#111">Get Monthly — $20</a>
 </div>
 {% endif %}
 
@@ -153,13 +155,17 @@
   {% endfor %}
 
   {% if is_preview is defined and is_preview and total > (jobs|length) %}
+  {% set onboarding_pass = ('/onboarding?welcome=1&plan=pass&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
+  {% set onboarding_weekly = ('/onboarding?welcome=1&plan=weekly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
+  {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
+  {% set onboarding_lifetime = ('/onboarding?welcome=1&plan=lifetime&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
   <div class="paywall-cta">
     <div class="big">{{ total - (jobs|length) }} more job{{ '' if (total - jobs|length) == 1 else 's' }} match your search</div>
     <p class="muted">Subscribe to see every listing, use all filters, and apply directly to company career pages.</p>
-    <a class="btn" href="/checkout?plan=pass" style="background:transparent;color:inherit;border:1px solid #94a3b8">3 days — $3</a>
-    <a class="btn" href="/checkout?plan=weekly" style="margin-left:8px">Weekly — $7</a>
-    <a class="btn" href="/checkout?plan=monthly" style="background:#111;margin-left:8px">Monthly — $20</a>
-    <a class="btn" href="/checkout?plan=lifetime" style="margin-left:8px;background:transparent;color:inherit;border:1px solid #94a3b8">Lifetime — $50</a>
+    <a class="btn" href="{% if memail %}/checkout?plan=pass{% else %}/member/signup?next={{ onboarding_pass }}{% endif %}" style="background:transparent;color:inherit;border:1px solid #94a3b8">3 days — $3</a>
+    <a class="btn" href="{% if memail %}/checkout?plan=weekly{% else %}/member/signup?next={{ onboarding_weekly }}{% endif %}" style="margin-left:8px">Weekly — $7</a>
+    <a class="btn" href="{% if memail %}/checkout?plan=monthly{% else %}/member/signup?next={{ onboarding_monthly }}{% endif %}" style="background:#111;margin-left:8px">Monthly — $20</a>
+    <a class="btn" href="{% if memail %}/checkout?plan=lifetime{% else %}/member/signup?next={{ onboarding_lifetime }}{% endif %}" style="margin-left:8px;background:transparent;color:inherit;border:1px solid #94a3b8">Lifetime — $50</a>
   </div>
   {% endif %}
 

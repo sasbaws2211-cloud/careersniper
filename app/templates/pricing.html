@@ -1,6 +1,15 @@
 {% extends "_plain.html" %}
 {% block title %}Pricing — {{ PLATFORM }}{% endblock %}
 {% block body %}
+{% macro plan_url(plan) -%}
+  {%- set return_to = request.query_params.get('next') or '/jobs' -%}
+  {%- if memail -%}
+    /checkout?plan={{ plan }}&amp;next={{ return_to|urlencode }}
+  {%- else -%}
+    {%- set onboarding = '/onboarding?welcome=1&plan=' ~ plan ~ '&next=' ~ (return_to|urlencode) -%}
+    /member/signup?next={{ onboarding|urlencode }}
+  {%- endif -%}
+{%- endmacro %}
 <style>
   .band { background: #2563eb; color: #fff; width: 100vw; margin: 0 calc(50% - 50vw) 36px; padding: 8px 0 30px; }
   .band .hero { text-align: center; padding: 36px 16px 4px; max-width: 760px; margin: 0 auto; }
@@ -84,7 +93,7 @@
         <li>Direct apply links</li>
         <li>Never auto-renews</li>
       </ul>
-      <a class="btn" href="/checkout?plan=pass{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get the pass</a>
+      <a class="btn" href="{{ plan_url('pass') }}">Get the pass</a>
     </div>
     <div class="plan">
       <h3>Weekly</h3>
@@ -97,7 +106,7 @@
         <li>Like / dislike ranking</li>
         <li>Email job alerts</li>
       </ul>
-      <a class="btn" href="/checkout?plan=weekly{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Weekly</a>
+      <a class="btn" href="{{ plan_url('weekly') }}">Get Weekly</a>
     </div>
     <div class="plan featured">
       <span class="badge">Most popular</span>
@@ -111,7 +120,7 @@
         <li>Best value vs weekly</li>
         <li>Cancel anytime</li>
       </ul>
-      <a class="btn" href="/checkout?plan=monthly{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Monthly</a>
+      <a class="btn" href="{{ plan_url('monthly') }}">Get Monthly</a>
     </div>
     <div class="plan">
       <h3>Lifetime</h3>
@@ -123,7 +132,7 @@
         <li>Full search forever</li>
         <li>Alerts included</li>
       </ul>
-      <a class="btn" href="/checkout?plan=lifetime{% if request.query_params.get('next') %}&amp;next={{ request.query_params.get('next')|urlencode }}{% endif %}">Get Lifetime</a>
+      <a class="btn" href="{{ plan_url('lifetime') }}">Get Lifetime</a>
     </div>
   </div>
 </div>

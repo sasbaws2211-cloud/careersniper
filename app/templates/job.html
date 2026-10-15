@@ -3,6 +3,8 @@
 {% block body %}
 {% set ats = (job.source or job.company.ats or '')|lower %}
 {% set initial = (job.company.name[:1] if job.company.name else '?')|upper %}
+{% set after_apply = '/jobs/' ~ job.id ~ '?unlocked=1' %}
+{% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ (after_apply|urlencode))|urlencode %}
 {% if request.query_params.get('unlocked') and has_access %}
 <div class="card" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534"><b>You&rsquo;re in.</b> Everything is unlocked, including the apply link below.
   <a href="/referrals">Invite a friend and get a free week &rarr;</a></div>
@@ -36,13 +38,12 @@
     {% if has_access %}
     <a class="btn" href="/go/{{ job.id }}" rel="nofollow">{{ 'Apply by email' if job.url.startswith('mailto:') else 'Apply on company site' }}</a>
     {% else %}
-    {% set onboarding_next = ('/jobs/' ~ job.id ~ '?unlocked=1')|urlencode %}
     {% if not signed_in %}
-    <a class="btn" href="/member/signup?next={{ onboarding_next }}" rel="nofollow">Unlock to apply</a>
+    <a class="btn" href="/member/signup?next={{ onboarding_monthly }}" rel="nofollow">Unlock to apply</a>
     {% elif not onboarding_complete %}
-    <a class="btn" href="/onboarding?next={{ onboarding_next }}" rel="nofollow">Unlock to apply</a>
+    <a class="btn" href="/onboarding?plan=monthly&amp;next={{ after_apply|urlencode }}" rel="nofollow">Unlock to apply</a>
     {% else %}
-    <a class="btn" href="/checkout?plan=monthly&amp;next={{ ('/jobs/' ~ job.id)|urlencode }}" rel="nofollow">Unlock to apply</a>
+    <a class="btn" href="/checkout?plan=monthly&amp;next={{ after_apply|urlencode }}" rel="nofollow">Unlock to apply</a>
     {% endif %}
     {% endif %}
     {% if signed_in and ai_on %}
@@ -145,13 +146,18 @@
   <h2 class="desc-title">About this job</h2>
   <div class="desc rich preview">{{ job.description|rich(preview_chars) }}</div>
   <div class="card" style="margin-top:16px;text-align:center">
+    {% set onboarding_pass = ('/onboarding?welcome=1&plan=pass&next=' ~ (after_apply|urlencode))|urlencode %}
+    {% set onboarding_weekly = ('/onboarding?welcome=1&plan=weekly&next=' ~ (after_apply|urlencode))|urlencode %}
+    {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ (after_apply|urlencode))|urlencode %}
+    {% set onboarding_lifetime = ('/onboarding?welcome=1&plan=lifetime&next=' ~ (after_apply|urlencode))|urlencode %}
     <strong>Unlock the full description and the apply link</strong>
     <p class="muted" style="margin:6px 0 12px">Every job, every filter, alerts and the AI tools. {{ REFUND_DAYS }}-day money-back promise.</p>
-    <a class="btn" href="/checkout?plan=monthly&next=/jobs/{{ job.id }}" style="background:#111;font-size:1.05rem;padding:12px 22px">Get Monthly &mdash; $20 <span style="font-size:.75rem;opacity:.8">&middot; most popular</span></a>
+    <a class="btn" href="{% if not signed_in %}/member/signup?next={{ onboarding_monthly }}{% elif not onboarding_complete %}/onboarding?plan=monthly&amp;next={{ after_apply|urlencode }}{% else %}/checkout?plan=monthly&amp;next={{ after_apply|urlencode }}{% endif %}" style="background:#111;font-size:1.05rem;padding:12px 22px">Get Monthly &mdash; $20 <span style="font-size:.75rem;opacity:.8">&middot; most popular</span></a>
     <p class="muted" style="margin:12px 0 0;font-size:.9rem">
-      Just trying it? <a href="/checkout?plan=pass&next=/jobs/{{ job.id }}">3 days &mdash; $3</a> &middot;
-      <a href="/checkout?plan=weekly&next=/jobs/{{ job.id }}">Weekly &mdash; $7</a> &middot;
-      <a href="/checkout?plan=lifetime&next=/jobs/{{ job.id }}">Lifetime &mdash; $50</a>
+      Just trying it?
+      <a href="{% if not signed_in %}/member/signup?next={{ onboarding_pass }}{% elif not onboarding_complete %}/onboarding?plan=pass&amp;next={{ after_apply|urlencode }}{% else %}/checkout?plan=pass&amp;next={{ after_apply|urlencode }}{% endif %}">3 days &mdash; $3</a> &middot;
+      <a href="{% if not signed_in %}/member/signup?next={{ onboarding_weekly }}{% elif not onboarding_complete %}/onboarding?plan=weekly&amp;next={{ after_apply|urlencode }}{% else %}/checkout?plan=weekly&amp;next={{ after_apply|urlencode }}{% endif %}">Weekly &mdash; $7</a> &middot;
+      <a href="{% if not signed_in %}/member/signup?next={{ onboarding_lifetime }}{% elif not onboarding_complete %}/onboarding?plan=lifetime&amp;next={{ after_apply|urlencode }}{% else %}/checkout?plan=lifetime&amp;next={{ after_apply|urlencode }}{% endif %}">Lifetime &mdash; $50</a>
     </p>
   </div>
   {% endif %}

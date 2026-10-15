@@ -11,7 +11,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import bcrypt
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
@@ -644,12 +644,15 @@ async def member_signup(request: Request, org: Org = Depends(tenant), db: AsyncS
 # ── First-time onboarding questionnaire ─────────────────────────────────────
 
 @app.get("/onboarding", response_class=HTMLResponse)
-async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), next: str = "/"):
+async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), next: str = "/", plan: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/onboarding", status_code=303)
+    selected_plan = plan if plan in billing.PAID_PLANS else ""
     if await onboarding_mod.is_complete(db, m):
         dest = members.safe_next(next)
+        if selected_plan:
+            dest = "/checkout?" + urlencode({"plan": selected_plan, "next": dest if dest not in ("", "/") else "/jobs"})
         if dest in ("/", ""):
             dest = "/pricing?from=onboarding"
         return RedirectResponse(dest, status_code=303)
@@ -661,6 +664,7 @@ async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), 
         profile=profile,
         pitch=pitch,
         next=members.safe_next(next),
+        plan=selected_plan,
         employment_status=onboarding_mod.EMPLOYMENT_STATUS,
         experience_levels=onboarding_mod.EXPERIENCE_LEVELS,
         job_types=onboarding_mod.JOB_TYPES,
@@ -678,6 +682,7 @@ async def onboarding_save(
     request: Request,
     db: AsyncSession = Depends(get_db),
     next: str = Form("/"),
+    plan: str = Form(""),
     intent: str = Form("pricing"),
     employment_status: str = Form(""),
     desired_titles: str = Form(""),
@@ -689,10 +694,10 @@ async def onboarding_save(
     main_frustration: str = Form(""),
     has_resume: str = Form(""),
 ):
-    from urllib.parse import urlencode
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/onboarding", status_code=303)
+    selected_plan = plan if plan in billing.PAID_PLANS else ""
     data = {
         "employment_status": employment_status,
         "desired_titles": desired_titles,
@@ -713,6 +718,7 @@ async def onboarding_save(
             profile=profile,
             pitch=pitch,
             next=members.safe_next(next),
+            plan=selected_plan,
             employment_status=onboarding_mod.EMPLOYMENT_STATUS,
             experience_levels=onboarding_mod.EXPERIENCE_LEVELS,
             job_types=onboarding_mod.JOB_TYPES,
@@ -729,6 +735,9 @@ async def onboarding_save(
     )
     if intent == "preview":
         dest = after_pay if after_pay.startswith("/jobs") else "/jobs?onboarded=1"
+        return RedirectResponse(dest, status_code=303)
+    if selected_plan:
+        dest = "/checkout?" + urlencode({"plan": selected_plan, "next": after_pay})
         return RedirectResponse(dest, status_code=303)
     dest = "/pricing?" + urlencode({"from": "onboarding", "next": after_pay})
     return RedirectResponse(dest, status_code=303)
