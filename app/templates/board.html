@@ -78,7 +78,12 @@
 {% elif lens_offer and for_all %}
 <div class="card muted" style="padding:10px 14px">Showing all jobs. <a href="/jobs">Show only jobs that match {{ 'your résumé' if lens_source == 'resume' else 'your answers' }} ({{ lens_offer.summary }})</a></div>
 {% elif lens_hint %}
+{% if has_access %}
 <div class="card" style="padding:10px 14px"><b>See jobs that fit you.</b> <a href="/resume">Upload your résumé</a> and this page shows the roles that match your experience.</div>
+{% else %}
+<div class="card" style="padding:10px 14px;background:#f8fafc"><b>&#128274; Jobs matched to your résumé.</b> Résumé upload is part of a plan, from $3 for 3 days.
+  <a href="/pricing?from=resume">See plans</a></div>
+{% endif %}
 {% endif %}
 
 <div class="jobs-layout">

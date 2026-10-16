@@ -313,6 +313,7 @@ async def free_trials() -> int:
     return int(_number((await overrides()), "ai_free_requests", config.AI_FREE_REQUESTS))
 
 
+FREE_TOOLS = {"resume_coach", "match_profile"}     # the only AI a member without a plan may use: the fit check, and reading a résumé's job titles
 FREE_PREFIX = "free:"      # calls made on the member's behalf at no charge (reading a résumé's profile); logged, but outside the budget
 
 
@@ -343,6 +344,9 @@ async def run(db: AsyncSession, member: Member, tool: str, system: str, user: st
         raise AIError("AI tools are not available right now.", 503)
     if not getattr(member, "verified", True):
         raise AIError("Confirm your email to use the AI tools. We sent you a link; use the button at the top of the page to resend it.", 403)
+    if tool not in FREE_TOOLS and (await daily_limit(db, member)) is not None:
+        # a member without a plan may use only the résumé fit check (and the free profile read at upload): every other AI tool is paid
+        raise AIError("AI tools are part of a paid plan. Subscribe to unlock résumé tailoring, cover letters, interview practice and job matching.", 402)
     c = await credits(db, member) if charge else {"left": 1, "trial": False, "limit": 0, "unlimited": False}
     if not c["unlimited"] and c["left"] <= 0:
         if c["trial"]:

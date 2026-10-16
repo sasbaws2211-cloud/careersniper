@@ -4,7 +4,7 @@
 <div class="hero"><h1>Your résumé</h1>
   <div class="muted">Upload it once. We read your job titles and level from it, so the board shows jobs that fit you, and the AI tools use it.</div></div>
 
-{% if request.query_params.get('welcome') %}
+{% if request.query_params.get('welcome') and has_access %}
 <div class="card" style="border-color:var(--brand)">
   <b>Welcome. Three steps to your first matches:</b>
   <ol style="margin:8px 0 0 18px;padding:0">
@@ -23,6 +23,15 @@
 {% if profile_note %}<div class="err">{{ profile_note }}</div>{% endif %}
 {% if profile_saved %}<div class="ok">Your job titles were updated. <a href="/jobs">See jobs that fit you &rarr;</a></div>{% endif %}
 
+{% if not has_access %}
+<div class="card" style="border-color:#93c5fd;background:#eff6ff;color:#1f2937">
+  <h2 style="margin-top:0">&#128274; Résumé upload is part of a plan</h2>
+  <p style="margin:0 0 10px">Upload or paste your résumé to get jobs matched to it, a fit check for every job, tailored résumés and cover letters.
+    It unlocks with any plan, from $3 for 3 days.</p>
+  <a class="btn" href="/pricing?from=resume">See plans</a>
+  <span class="muted" style="font-size:13px;margin-left:8px">Free preview needs no card &middot; {{ REFUND_DAYS }}-day money-back promise</span>
+</div>
+{% else %}
 <form method="post" action="/resume/upload" enctype="multipart/form-data" class="card">
   <label for="file"><b>Upload your résumé</b>
     <span class="muted">(PDF, Word .docx or text, up to {{ max_file_mb }} MB)</span></label>
@@ -32,6 +41,7 @@
   </div>
   <p class="muted" style="font-size:13px;margin-bottom:0">We keep only the text, not the file. You can check and edit the text below.</p>
 </form>
+{% endif %}
 
 {% if profile %}
 <div class="card">
@@ -57,13 +67,14 @@
     </form>
   </details>
 </div>
-{% elif has_resume and ai_on %}
+{% elif has_resume and ai_on and has_access %}
 <form method="post" action="/resume/profile" class="card">
   <p style="margin-top:0">We have your résumé but have not read your job titles from it yet.</p>
   <button type="submit">Read my résumé again</button>
 </form>
 {% endif %}
 
+{% if has_access %}
 <form method="post" action="/resume" class="card">
   <label for="text"><b>Résumé text</b> <span class="muted">&mdash; or paste it here</span><br>
     <span class="muted">(plain text, {{ '{:,}'.format(min_chars) }} to {{ '{:,}'.format(max_chars) }} characters)</span></label>
@@ -75,6 +86,7 @@
   </p>
   <button type="submit">Save résumé</button>
 </form>
+{% endif %}
 
 {% if text %}
 <form method="post" action="/resume/delete" data-confirm="Delete your résumé and any match results made from it?">

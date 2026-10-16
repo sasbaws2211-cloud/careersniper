@@ -5,6 +5,9 @@
 {% set initial = (job.company.name[:1] if job.company.name else '?')|upper %}
 {% set after_apply = '/jobs/' ~ job.id ~ '?unlocked=1' %}
 {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ (after_apply|urlencode))|urlencode %}
+{% if not signed_in %}{% set paywall_href = '/member/signup?next=' ~ onboarding_monthly %}
+{% elif not onboarding_complete %}{% set paywall_href = '/onboarding?plan=monthly&next=' ~ (after_apply|urlencode) %}
+{% else %}{% set paywall_href = '/checkout?plan=monthly&next=' ~ (after_apply|urlencode) %}{% endif %}
 {% if request.query_params.get('unlocked') and has_access %}
 <div class="card" style="border-color:#bbf7d0;background:#f0fdf4;color:#166534"><b>You&rsquo;re in.</b> Everything is unlocked, including the apply link below.
   <a href="/referrals">Invite a friend and get a free week &rarr;</a></div>
@@ -38,41 +41,48 @@
     {% if has_access %}
     <a class="btn" href="/go/{{ job.id }}" rel="nofollow">{{ 'Apply by email' if job.url.startswith('mailto:') else 'Apply on company site' }}</a>
     {% else %}
-    {% if not signed_in %}
-    <a class="btn" href="/member/signup?next={{ onboarding_monthly }}" rel="nofollow">Unlock to apply</a>
-    {% elif not onboarding_complete %}
-    <a class="btn" href="/onboarding?plan=monthly&amp;next={{ after_apply|urlencode }}" rel="nofollow">Unlock to apply</a>
+    <a class="btn" href="{{ paywall_href }}" rel="nofollow">Unlock to apply</a>
+    {% endif %}
+
+    {# Everything below needs a plan: someone without one is sent to the paywall (which returns them to this job afterwards). #}
+    {% if has_access %}
+      {% if signed_in and ai_on %}
+      <a class="btn ghost" href="/jobs/{{ job.id }}/prepare" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10024; Prepare my application</a>
+      <form method="post" action="/jobs/{{ job.id }}/interview" style="margin:0"><button class="ghost" type="submit">&#127908; Practice interview</button></form>
+      <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Tailor my résumé</a>
+      <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Write cover letter</a>
+      {% endif %}
+      {% if tracked %}
+      <a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; In your tracker: {{ tracker_labels[tracked] if tracked in tracker_labels else tracked }}</a>
+      {% elif signed_in %}
+      <form method="post" action="/jobs/{{ job.id }}/track" style="margin:0">
+        <button class="ghost" type="submit">+ Track this job</button>
+      </form>
+      {% else %}
+      <a class="btn ghost" href="/member/login?next=/jobs/{{ job.id }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">Sign in to track</a>
+      {% endif %}
+      <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
+        <input type="hidden" name="reaction" value="liked">
+        <input type="hidden" name="next" value="/jobs/{{ job.id }}">
+        <button class="ghost">👍 Like</button>
+      </form>
+      <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
+        <input type="hidden" name="reaction" value="disliked">
+        <input type="hidden" name="next" value="/jobs/{{ job.id }}">
+        <button class="ghost">👎 Dislike</button>
+      </form>
     {% else %}
-    <a class="btn" href="/checkout?plan=monthly&amp;next={{ after_apply|urlencode }}" rel="nofollow">Unlock to apply</a>
+      {% set ghost = 'background:transparent;color:inherit;border:1px solid #94a3b8' %}
+      {% if ai_on %}
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">&#10024; Prepare my application</a>
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">&#127908; Practice interview</a>
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">&#9998; Tailor my résumé</a>
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">&#9998; Write cover letter</a>
+      {% endif %}
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">+ Track this job</a>
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">👍 Like</a>
+      <a class="btn ghost" href="{{ paywall_href }}" rel="nofollow" style="{{ ghost }}">👎 Dislike</a>
     {% endif %}
-    {% endif %}
-    {% if signed_in and ai_on %}
-    <a class="btn ghost" href="/jobs/{{ job.id }}/prepare" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10024; Prepare my application</a>
-    {% endif %}
-    {% if signed_in and ai_on %}
-    <form method="post" action="/jobs/{{ job.id }}/interview" style="margin:0"><button class="ghost" type="submit">&#127908; Practice interview</button></form>
-    <a class="btn ghost" href="/jobs/{{ job.id }}/tailor" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Tailor my résumé</a>
-    <a class="btn ghost" href="/jobs/{{ job.id }}/cover-letter" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#9998; Write cover letter</a>
-    {% endif %}
-    {% if tracked %}
-    <a class="btn ghost" href="/tracker" style="background:transparent;color:inherit;border:1px solid #94a3b8">&#10003; In your tracker: {{ tracker_labels[tracked] if tracked in tracker_labels else tracked }}</a>
-    {% elif signed_in %}
-    <form method="post" action="/jobs/{{ job.id }}/track" style="margin:0">
-      <button class="ghost" type="submit">+ Track this job</button>
-    </form>
-    {% else %}
-    <a class="btn ghost" href="/member/login?next=/jobs/{{ job.id }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">Sign in to track</a>
-    {% endif %}
-    <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
-      <input type="hidden" name="reaction" value="liked">
-      <input type="hidden" name="next" value="/jobs/{{ job.id }}">
-      <button class="ghost">👍 Like</button>
-    </form>
-    <form method="post" action="/jobs/{{ job.id }}/react" style="margin:0">
-      <input type="hidden" name="reaction" value="disliked">
-      <input type="hidden" name="next" value="/jobs/{{ job.id }}">
-      <button class="ghost">👎 Dislike</button>
-    </form>
   </div>
 
 
@@ -84,7 +94,11 @@
     {% elif request.query_params.get('coach') == 'limit' %}<div class="err">AI requests are temporarily unavailable. Please try again later.</div>
     {% elif request.query_params.get('coach') == 'error' %}<div class="err">The AI service could not answer just now. Please try again in a moment.</div>{% endif %}
     {% if not coach_resume %}
+      {% if has_access %}
       <p class="muted" style="margin:0">Upload your résumé and we will tell you what to change to fit this job. <a href="/resume">Upload your résumé &rarr;</a></p>
+      {% else %}
+      <p class="muted" style="margin:0">&#128274; Résumé upload and the fit check come with a plan, so we can tell you what to change to fit this job. <a href="{{ paywall_href }}">Unlock &rarr;</a></p>
+      {% endif %}
     {% elif coach %}
       <p style="margin:0 0 10px">
         {% if coach.score is not none %}<b style="font-size:1.3rem">{{ coach.score }}</b><span class="muted">/100 &middot; </span>{% endif %}
@@ -101,8 +115,8 @@
       </ol>{% endif %}
       <p class="muted" style="font-size:13px;margin:8px 0 10px">An AI wrote this from your résumé and the posting. Only add what is true.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn" href="/jobs/{{ job.id }}/tailor">&#9998; Apply these edits: tailor my résumé</a>
-        <a class="btn ghost" href="/resume" style="background:transparent;color:inherit;border:1px solid #94a3b8">Update my résumé</a>
+        <a class="btn" href="{{ ('/jobs/' ~ job.id ~ '/tailor') if has_access else paywall_href }}">&#9998; Apply these edits: tailor my résumé</a>
+        <a class="btn ghost" href="{{ '/resume' if has_access else paywall_href }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">Update my résumé</a>
       </div>
     {% else %}
       <p class="muted" style="margin:0 0 10px">See what your résumé already shows for this job, what is missing, and the edits worth making before you apply.

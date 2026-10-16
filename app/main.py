@@ -1075,7 +1075,7 @@ async def _resume_page(request: Request, m: Member, db: AsyncSession, text: str 
     return templates.TemplateResponse(request, "resume.html", dict(
         profile=profile if isinstance(profile, dict) and profile.get("titles") else None,
         profile_note=_PROFILE_NOTES.get(qp.get("note", ""), ""), uploaded=qp.get("uploaded") == "1", profile_saved=qp.get("profile") == "saved",
-        has_resume=bool(r and resume_mod.text_of(r)), ai_on=bool(s), accept=resume_upload.ACCEPT, max_file_mb=resume_upload.MAX_FILE_BYTES // 1_000_000,
+        has_resume=bool(r and resume_mod.text_of(r)), ai_on=bool(s), has_access=await _member_has_access(m, db), accept=resume_upload.ACCEPT, max_file_mb=resume_upload.MAX_FILE_BYTES // 1_000_000,
         levels=lens_mod.SENIORITY_LABEL,
         org=None, text=resume_mod.text_of(r) if text is None else text, error=error, saved=saved,
         min_chars=resume_mod.MIN_CHARS, max_chars=resume_mod.MAX_CHARS,
@@ -1095,6 +1095,8 @@ async def resume_save(request: Request, db: AsyncSession = Depends(get_db), text
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     throttle(request, "resume", 30, 3600)
     try:
         r = await resume_mod.save_text(db, m, text)
@@ -1126,6 +1128,8 @@ async def resume_upload_route(request: Request, db: AsyncSession = Depends(get_d
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     throttle(request, "resume", 30, 3600)
     try:
         if file is None or not file.filename:
@@ -1145,6 +1149,8 @@ async def resume_profile_build(request: Request, db: AsyncSession = Depends(get_
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     r = await resume_mod.get_main(db, m)
     if not r or not resume_mod.text_of(r):
         return RedirectResponse("/resume", status_code=303)
@@ -1200,6 +1206,8 @@ async def match_page(request: Request, db: AsyncSession = Depends(get_db)):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/match", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     return await _match_page(request, db, m)
 
 
@@ -1208,6 +1216,8 @@ async def match_run(request: Request, db: AsyncSession = Depends(get_db), remote
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/match", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     flt = Filters.make(remote_from=remote_from, visa=visa, paid=paid)
     r = await resume_mod.get_main(db, m)
     if not (await ai.enabled()):
@@ -1253,6 +1263,19 @@ async def _letter_form(request: Request, db: AsyncSession, m: Member, job: Job, 
         length=form.get("length", "standard"), emphasis=form.get("emphasis", "")), status_code=code)
 
 
+async def _paywall_redirect(db: AsyncSession, m: Member, job_id: int | None = None):
+    """None for a subscriber. For anyone else, the redirect to the paywall that brings them back to this job once they have paid
+    (or, for an AI tool that is not tied to a job, to the plans page)."""
+    if await _member_has_access(m, db):
+        return None
+    if job_id is None:
+        return RedirectResponse("/pricing?from=ai-tools", status_code=303)
+    after = f"/jobs/{job_id}?unlocked=1"
+    if not await onboarding_mod.is_complete(db, m):
+        return RedirectResponse("/onboarding?" + urlencode({"plan": "monthly", "next": after}), status_code=303)
+    return RedirectResponse("/checkout?" + urlencode({"plan": "monthly", "next": after}), status_code=303)
+
+
 async def _visible_job(db: AsyncSession, job_id: int) -> Job:
     job = await db.scalar(feed_query().where(Job.id == job_id))
     if not job:
@@ -1265,6 +1288,8 @@ async def letter_form_page(job_id: int, request: Request, db: AsyncSession = Dep
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/cover-letter", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     return await _letter_form(request, db, m, (await _visible_job(db, job_id)))
 
 
@@ -1274,6 +1299,8 @@ async def letter_write(job_id: int, request: Request, db: AsyncSession = Depends
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/cover-letter", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     job = await _visible_job(db, job_id)
     form = dict(name=name, tone=tone, length=length, emphasis=emphasis)
     if not (await ai.enabled()):
@@ -1399,6 +1426,8 @@ async def tailor_form_page(job_id: int, request: Request, db: AsyncSession = Dep
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/tailor", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     return await _tailor_form(request, db, m, (await _visible_job(db, job_id)))
 
 
@@ -1407,6 +1436,8 @@ async def tailor_make(job_id: int, request: Request, db: AsyncSession = Depends(
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/tailor", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     job = await _visible_job(db, job_id)
     if not (await ai.enabled()):
         return await _tailor_form(request, db, m, job, "Résumé tailoring is not available right now.", 503, emphasis=emphasis)
@@ -1545,6 +1576,8 @@ async def interview_new(request: Request, db: AsyncSession = Depends(get_db), ro
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/interview", status_code=303)
+    if (gate := await _paywall_redirect(db, m)):
+        return gate
     form = dict(role=role, company=company, posting=posting)
     if not (await ai.enabled()):
         return await _interview_list(request, db, m, "The interview coach is not available right now.", 503, form=form)
@@ -1563,6 +1596,8 @@ async def interview_for_job(job_id: int, request: Request, db: AsyncSession = De
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     job = await _visible_job(db, job_id)
     if not (await ai.enabled()):
         return await _interview_list(request, db, m, "The interview coach is not available right now.", 503)
@@ -2203,6 +2238,8 @@ async def prepare_application(job_id: int, request: Request, org: Org = Depends(
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/prepare", status_code=303)
+    if (gate := await _paywall_redirect(db, m, job_id)):
+        return gate
     job = await db.scalar(feed_query(org).where(Job.id == job_id))
     if not job:
         raise HTTPException(404, "Job not found")
