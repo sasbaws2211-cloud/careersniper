@@ -98,6 +98,7 @@ class PaystackClient:
             "reference": reference,
             "callback_url": callback_url,
             "currency": currency,
+            "channels": ["card", "bank", "ussd", "qr", "bank_transfer", "eft", "apple_pay"],
             "metadata": metadata or {},
         }
         if plan_code:

@@ -425,8 +425,14 @@ async def repair(db: AsyncSession, member: Member, original: str, tailored: str,
         await db.rollback()
         return None
     fixed = tidy(reply.text)
-    if parse_reply(fixed)[0] != fixed:              # the model sent the section markers again: take the résumé part
+    # The correction is asked for as plain text, so it normally carries no section markers and parse_reply() would reject it as
+    # "instructions". Only when the model sent the markers again is the résumé part taken out of them.
+    try:
         fixed = parse_reply(fixed)[0]
+    except ai.AIError:
+        pass
+    if _looks_like_prompt(fixed):
+        return None                                  # the model repeated its instructions: keep the rewrite and show the flags
     if len(fixed) < max(300, MIN_RATIO * len(original), 0.6 * len(tailored)):
         return None                                  # a "correction" that threw most of the résumé away is not one
     return fixed
