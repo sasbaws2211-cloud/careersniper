@@ -7,6 +7,7 @@ their angle brackets stripped, like in job match.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,8 @@ SYSTEM = (
     "\"I am writing to express my interest\" or \"passionate team player\".\n"
     "4. Write in the same language as the job posting. Tone: {tone}. Length: {length}.\n"
     "5. Start with \"Dear Hiring Team,\" and end with \"Sincerely,\" followed by the candidate's name on its own line. "
-    "Plain text only: no markdown, no headings, no placeholders in square brackets, no subject line.\n"
+    "Plain text only: no markdown, no headings, no placeholders in square brackets, no subject line. "
+    "Put each paragraph on one line and leave one blank line between paragraphs (three or four short paragraphs).\n"
     "6. Output only the letter. No introduction, no explanation, no notes after it."
 )
 _PREAMBLE = re.compile(r"^(?:sure|certainly|of course|here(?:'s| is| are)|below is)\b[^\n]*\n+", re.I)
@@ -134,5 +136,5 @@ async def latest_for_job(db: AsyncSession, member: Member, job_id: int) -> Docum
 
 
 def filename(doc: Document) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", doc.title.lower()).strip("-")[:60] or "cover-letter"
+    slug = re.sub(r"[^a-z0-9]+", "-", unicodedata.normalize("NFKD", doc.title).encode("ascii", "ignore").decode().lower()).strip("-")[:60] or "cover-letter"
     return f"{slug}.txt"

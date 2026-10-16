@@ -60,15 +60,29 @@
 </div>
 {% endif %}
 
-<form method="post" action="/tailored/{{ doc.id }}" class="card">
-  <textarea id="content" name="content" rows="30" maxlength="{{ max_chars }}" required style="width:100%;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:0.9rem;line-height:1.45">{{ content }}</textarea>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-    <button type="submit">Save changes</button>
-    <button type="button" class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('content').value).then(()=>{this.textContent='Copied'})">Copy</button>
-    <a class="btn ghost" href="/tailored/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
-    <a class="btn ghost" href="/tailored/{{ doc.id }}/print" target="_blank" style="background:transparent;color:inherit;border:1px solid #94a3b8">Print / save as PDF</a>
-  </div>
-</form>
+<style>{{ DOC_CSS|safe }}
+  .sheetwrap{background:#e5e7eb;padding:18px;border-radius:12px;overflow-x:auto;margin-bottom:16px}
+  .sheetwrap .doc{box-shadow:0 2px 14px rgba(0,0,0,.18)}
+  @media (max-width:640px){.sheetwrap{padding:8px}.doc,.doc.letter{padding:22px 18px;font-size:10pt}.doc .name{font-size:18pt}}
+  details.edit>summary{cursor:pointer;font-weight:600}
+</style>
+<div class="sheetwrap">{{ preview }}</div>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+  <a class="btn" href="/tailored/{{ doc.id }}/pdf">Download PDF</a>
+  <a class="btn ghost" href="/tailored/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
+  <a class="btn ghost" href="/tailored/{{ doc.id }}/print" target="_blank" style="background:transparent;color:inherit;border:1px solid #94a3b8">Print</a>
+  <button type="button" class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('content').value).then(()=>{this.textContent='Copied'})">Copy text</button>
+</div>
+
+<details class="card edit"{% if error or saved %} open{% endif %}>
+  <summary>Edit the text</summary>
+  <form method="post" action="/tailored/{{ doc.id }}" style="margin-top:10px">
+    <p class="muted" style="font-size:13px;margin:0 0 8px">Headings in CAPITALS, one line per bullet, a blank line between roles. The preview above and the downloads are laid out from this text.</p>
+    <textarea id="content" name="content" rows="26" maxlength="{{ max_chars }}" required style="width:100%;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:0.9rem;line-height:1.45">{{ content }}</textarea>
+    <div style="margin-top:10px"><button type="submit">Save changes</button></div>
+  </form>
+</details>
 
 {% if coverage %}
 <div class="card"><b>How this résumé answers what the job asks for</b>

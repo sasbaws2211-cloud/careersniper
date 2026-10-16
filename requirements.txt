@@ -19,3 +19,4 @@ python-multipart==0.0.32
 cryptography==50.0.1 
 sentry-sdk
 redis==5.2.1
+reportlab==5.0.1

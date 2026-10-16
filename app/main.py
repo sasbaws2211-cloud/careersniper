@@ -15,7 +15,7 @@ from urllib.parse import quote, urlencode
 
 import bcrypt
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.exception_handlers import http_exception_handler as default_http_handler
 from fastapi.exception_handlers import request_validation_exception_handler as default_validation_handler
 from fastapi.exceptions import RequestValidationError
@@ -32,7 +32,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt
 from . import search as search_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
@@ -49,6 +49,7 @@ templates = Jinja2Templates(directory=BASE / "templates",
                             context_processors=[lambda r: {"memail": r.session.get("memail"), "ai_on": ai.enabled_cached(), "invited": bool(r.session.get("ref")),
                                                                                     "cur": currency.for_request(r), "approx": currency.approx, "currencies": currency.CURRENCIES}])
 templates.env.filters["ago"] = lambda d: ago(d)
+templates.env.globals["DOC_CSS"] = docfmt.DOC_CSS      # the look of a résumé or letter on the page, shared with the print route
 templates.env.filters["rich"] = lambda text, limit=None: textfmt.render(text, limit)   # a posting as headings, bullets and paragraphs
 templates.env.globals["progress"] = lambda s: interview.progress(s)
 templates.env.globals["CSS_V"] = int((BASE / "static" / "app.css").stat().st_mtime)    # a changed stylesheet gets a new address, so browsers never keep an old copy
@@ -1196,9 +1197,24 @@ async def _letter_page(request: Request, db: AsyncSession, m: Member, doc, error
                  saved: bool = False, fresh: bool = False):
     job = (await db.get(Job, doc.job_id)) if doc.job_id else None
     tracked = bool(job and (await tracker.tracked_status(db, m, job.id)))
+    shown = doc.content if content is None else content
     return templates.TemplateResponse(request, "letter.html", dict(
         org=None, doc=doc, job=job, tracked=tracked, error=error, saved=saved, fresh=fresh, max_chars=letters.MAX_EDIT_CHARS,
-        content=doc.content if content is None else content), status_code=code)
+        preview=docfmt.letter_html(shown, await _letterhead(db, m)), content=shown), status_code=code)
+
+
+async def _letterhead(db: AsyncSession, m: Member):
+    """Name and contact line from the member's saved résumé, to head a cover letter the way the résumé is headed."""
+    return docfmt.letterhead(resume_mod.text_of((await resume_mod.get_main(db, m))))
+
+
+def _paper(paper: str) -> str:
+    return "letter" if (paper or "").lower() == "letter" else "a4"
+
+
+def _download(data: bytes | str, name: str, media: str) -> Response:
+    return Response(data if isinstance(data, bytes) else data.encode("utf-8"), media_type=media,
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 async def _letter_owned(db: AsyncSession, m: Member, doc_id: int):
@@ -1253,7 +1269,26 @@ async def letter_download(doc_id: int, request: Request, db: AsyncSession = Depe
     if not m:
         return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
     doc = await _letter_owned(db, m, doc_id)
-    return PlainTextResponse(doc.content, headers={"Content-Disposition": f'attachment; filename="{letters.filename(doc)}"'})
+    return _download(docfmt.letter_txt(doc.content, await _letterhead(db, m)), letters.filename(doc), "text/plain; charset=utf-8")
+
+
+@app.get("/letters/{doc_id}/pdf")
+async def letter_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = ""):
+    m = await current_member(request, db)
+    if not m:
+        return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
+    doc = await _letter_owned(db, m, doc_id)
+    pdf = docfmt.letter_pdf(doc.content, await _letterhead(db, m), paper=_paper(paper), title=doc.title)
+    return _download(pdf, letters.filename(doc)[:-4] + ".pdf", "application/pdf")
+
+
+@app.get("/letters/{doc_id}/print", response_class=HTMLResponse)
+async def letter_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    m = await current_member(request, db)
+    if not m:
+        return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
+    doc = await _letter_owned(db, m, doc_id)
+    return HTMLResponse(docfmt.page_html(doc.title, docfmt.letter_html(doc.content, await _letterhead(db, m))))
 
 
 # ---------------------------------------------------------------- tailored résumés
@@ -1305,6 +1340,7 @@ async def _tailored_page(request: Request, db: AsyncSession, m: Member, doc, err
     meta = doc.meta or {}
     return templates.TemplateResponse(request, "tailored.html", dict(
         org=None, doc=doc, job=job, error=error, saved=saved, fresh=fresh, content=shown, max_chars=tailor.MAX_EDIT_CHARS,
+        preview=docfmt.resume_html(shown),
         check=tailor.review(original, shown) if original else {"unsupported": [], "dropped_years": [], "placeholders": tailor.placeholders(shown)},
         changes=meta.get("changes") or [], gaps=meta.get("gaps") or [], coverage=meta.get("coverage") or [],
         audit=meta.get("audit"), audit_done=("audit" in meta), corrected=meta.get("corrected") or []), status_code=code)
@@ -1356,7 +1392,16 @@ async def tailored_download(doc_id: int, request: Request, db: AsyncSession = De
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
     doc = await _tailored_owned(db, m, doc_id)
-    return PlainTextResponse(doc.content, headers={"Content-Disposition": f'attachment; filename="{tailor.filename(doc)}"'})
+    return _download(docfmt.resume_txt(doc.content), tailor.filename(doc), "text/plain; charset=utf-8")
+
+
+@app.get("/tailored/{doc_id}/pdf")
+async def tailored_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = ""):
+    m = await current_member(request, db)
+    if not m:
+        return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
+    doc = await _tailored_owned(db, m, doc_id)
+    return _download(docfmt.resume_pdf(doc.content, paper=_paper(paper), title=doc.title), tailor.filename(doc)[:-4] + ".pdf", "application/pdf")
 
 
 @app.get("/tailored/{doc_id}/print", response_class=HTMLResponse)
@@ -1364,7 +1409,8 @@ async def tailored_print(doc_id: int, request: Request, db: AsyncSession = Depen
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
-    return templates.TemplateResponse(request, "tailored_print.html", dict(doc=(await _tailored_owned(db, m, doc_id))))
+    doc = await _tailored_owned(db, m, doc_id)
+    return HTMLResponse(docfmt.page_html(doc.title, docfmt.resume_html(doc.content)))
 
 
 # ---------------------------------------------------------------- interview coach
