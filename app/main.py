@@ -2000,7 +2000,7 @@ async def login(request: Request, db: AsyncSession = Depends(get_db), email: str
         return templates.TemplateResponse(request, "login.html", {"error": "Invalid email or password.", "notice": ""}, status_code=401)
     security.limiter.clear(key)
     start_admin_session(request, user)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 # ---- admin password reset (emailed, signed, single-use, 1 hour) and change
@@ -2076,12 +2076,12 @@ async def admin_password(request: Request, user: User = Depends(require_admin), 
     user.password_hash = bcrypt.hashpw(new.encode(), bcrypt.gensalt()).decode()
     await db.commit()
     start_admin_session(request, user)   # this session continues; every other session for this account ends
-    return RedirectResponse("/admin?pw=changed#account", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/api-key/rotate")
 def admin_rotate_api_key():
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/logout")
@@ -2144,11 +2144,6 @@ async def _admin_ctx(db: AsyncSession, user: User, request: Request | None = Non
     ctx.update(extra)
     return ctx
 
-@app.get("/admin", response_class=HTMLResponse)
-async def admin(request: Request, user: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    return templates.TemplateResponse(request, "admin.html", (await _admin_ctx(db, user, request)))
-
-
 @app.post("/admin/branding")
 @app.post("/admin/domain/verify")
 @app.post("/admin/curation")
@@ -2161,7 +2156,7 @@ async def admin(request: Request, user: User = Depends(require_admin), db: Async
 @app.post("/admin/team/members/{user_id}/remove")
 def admin_white_label_removed(key: str = "", invite_id: int = 0, user_id: int = 0):
     """White-label / multi-tenant admin actions removed in B2C pivot."""
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/companies")
@@ -2180,10 +2175,10 @@ async def admin_add_company(request: Request, user: User = Depends(require_admin
         existing.active = True
         existing.name = name or existing.name
         await db.commit()
-        return RedirectResponse("/admin?msg=updated", status_code=303)
+        return RedirectResponse("/", status_code=303)
     db.add(Company(name=name, ats=ats, board_token=token, active=True))
     await db.commit()
-    return RedirectResponse("/admin?msg=added", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/companies/{cid}/delete")
@@ -2193,7 +2188,7 @@ async def admin_del_company(cid: int, user: User = Depends(require_admin), db: A
     if c:
         c.active = False
         await db.commit()
-    return RedirectResponse("/admin?msg=removed", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.get("/invite/{token}", response_class=HTMLResponse)
@@ -2566,4 +2561,4 @@ def tools_removed(rest: str = ""):
 @app.api_route("/admin/payments/{rest:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 def admin_employer_surface_removed(rest: str = ""):
     """Former employer-moderation UI — removed in B2C pivot."""
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
