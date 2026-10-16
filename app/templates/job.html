@@ -137,6 +137,7 @@
   </p>
   {% endif %}
 
+  <div class="jd">
   {% if has_access %}
   {% if reqs %}
   <section class="reqs" aria-label="What the job asks for">
@@ -149,15 +150,19 @@
     {% if reqs.min_years is not none %}<p class="reqs-foot"><span class="tag">{{ reqs.min_years }}+ years of experience</span>{% if reqs.seniority %}<span class="tag">{{ reqs.seniority|title }}</span>{% endif %}</p>{% endif %}
   </section>
   {% endif %}
-  <h2 class="desc-title">About this job</h2>
+  <header class="jd-head"><span class="jd-kicker">Job description</span><h2>About this job</h2></header>
   <div class="desc rich">{{ job.description|rich(6000) }}</div>
+  <div class="jd-cta">
+    <a class="btn" href="/go/{{ job.id }}" rel="nofollow">{{ 'Apply by email' if job.url.startswith('mailto:') else 'Apply on company site' }}</a>
+    <div class="muted">Opens the company&rsquo;s own application page</div>
+  </div>
   {% if signed_in %}
   <form method="post" action="/jobs/{{ job.id }}/report-closed" style="margin:12px 0 0">
     <button class="ghost" type="submit" style="font-size:.85rem">Already closed? Report this listing</button>
   </form>
   {% endif %}
   {% else %}
-  <h2 class="desc-title">About this job</h2>
+  <header class="jd-head"><span class="jd-kicker">Job description</span><h2>About this job</h2></header>
   <div class="desc rich preview">{{ job.description|rich(preview_chars) }}</div>
   <div class="card" style="margin-top:16px;text-align:center">
     {% set onboarding_pass = ('/onboarding?welcome=1&plan=pass&next=' ~ (after_apply|urlencode))|urlencode %}
@@ -175,5 +180,6 @@
     </p>
   </div>
   {% endif %}
+  </div>
 </div>
 {% endblock %}
