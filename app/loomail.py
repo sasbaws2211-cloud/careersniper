@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
-import httpx
+from loomail import Loomail, LoomailError            # the official SDK (vendor/loomail-*.whl), not this module
 from sqlalchemy import select
 
 from . import billing, config
@@ -27,8 +28,12 @@ from .models import Member, MemberProfile
 
 log = logging.getLogger("careersniper")
 
-TIMEOUT = httpx.Timeout(4.0)
+TIMEOUT = 4.0                # seconds per attempt; the SDK retries once on a network error, a 429 or a 5xx, never on a 4xx
+MAX_RETRIES = 1
 _tasks: set = set()          # keeps background sends alive until they finish (a bare create_task can be garbage-collected)
+# The SDK is blocking, so its calls run on their own small pool: a down Loomail can use up these 4 threads and nothing else,
+# never the default executor the rest of the app shares.
+_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="loomail")
 
 # what each paid AI tool is called in Loomail, so flows can speak about "tailored a résumé" rather than an internal tool name
 TOOL_EVENTS = {
@@ -44,30 +49,26 @@ def enabled() -> bool:
     return bool(config.LOOMAIL_SECRET_KEY)
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+def _now() -> datetime:
+    return datetime.now(timezone.utc).replace(microsecond=0)
 
 
-def _client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=TIMEOUT, headers={"Authorization": f"Bearer {config.LOOMAIL_SECRET_KEY}", "Content-Type": "application/json"})
+def _sdk() -> Loomail:
+    """A client for the current settings (cheap to build, so a changed key or URL is picked up without a restart)."""
+    return Loomail(config.LOOMAIL_SECRET_KEY, host=config.LOOMAIL_URL, timeout=TIMEOUT, max_retries=MAX_RETRIES)
 
 
-async def _post(path: str, payload: dict) -> bool:
-    """One call to Loomail, retried once on a network error, a 429 or a 5xx. True when it was accepted. Never raises."""
-    url = config.LOOMAIL_URL.rstrip("/") + path
-    for attempt in (1, 2):
-        try:
-            async with _client() as c:
-                r = await c.post(url, json=payload)
-            if r.status_code < 300:
-                return True
-            if r.status_code in (400, 401, 403, 404, 422):          # a mistake on our side: retrying cannot fix it
-                log.warning("loomail %s refused: %s %s", path, r.status_code, r.text[:200])
-                return False
-        except Exception as e:                                       # noqa: BLE001  tracking must never break anything
-            log.warning("loomail %s failed (%s)", path, type(e).__name__)
-        if attempt == 1:
-            await asyncio.sleep(0.5)
+async def _call(what: str, fn) -> bool:
+    """Run one SDK call (`fn(client)`) off the event loop. True when Loomail accepted it. Never raises."""
+    def work():
+        return fn(_sdk())
+    try:
+        await asyncio.get_running_loop().run_in_executor(_pool, work)
+        return True
+    except LoomailError as e:
+        log.warning("loomail %s failed: %s%s", what, e.code, f" ({e.status})" if e.status else "")
+    except Exception as e:                                           # noqa: BLE001  tracking must never break anything
+        log.warning("loomail %s failed (%s)", what, type(e).__name__)
     return False
 
 
@@ -99,13 +100,12 @@ async def _send(member_id: int | None, email: str | None, event: str | None, pro
             return                                  # a payer who has no account yet: they are identified when they sign up
         traits = await traits_for(db, member)
     uid = str(member.id)
-    if not await _post("/v1/identify", {"userId": uid, "traits": traits, "timestamp": _now()}):
+    if not await _call("identify", lambda c: c.identify(uid, traits, timestamp=_now())):
         return
     if event:
-        body = {"userId": uid, "event": event, "properties": properties or {}, "timestamp": _now()}
-        if dedupe is not None:
-            body["messageId"] = f"{event}:{uid}:{dedupe}"       # Loomail drops a repeat of the same messageId
-        await _post("/v1/track", body)
+        # Loomail drops a repeat of the same message id; with no `dedupe` the SDK makes a fresh one per call (so a retry still can't double-count)
+        message_id = f"{event}:{uid}:{dedupe}" if dedupe is not None else None
+        await _call("track", lambda c: c.track(uid, event, properties or {}, timestamp=_now(), message_id=message_id))
 
 
 def emit(member_id: int | None = None, event: str | None = None, properties: dict | None = None, *, email: str | None = None,
@@ -125,6 +125,6 @@ async def check() -> str:
     """For `python -m app.cli loomail-check`: send one test person and one test event, and say what Loomail answered."""
     if not enabled():
         return "LOOMAIL_SECRET_KEY is not set. Create a secret key in Loomail (Integrate) and put it in .env."
-    ok1 = await _post("/v1/identify", {"userId": "careersniper-selftest", "traits": {"plan": "free", "source": "careersniper-selftest"}})
-    ok2 = await _post("/v1/track", {"userId": "careersniper-selftest", "event": "integration_test", "messageId": "careersniper-selftest"})
+    ok1 = await _call("identify", lambda c: c.identify("careersniper-selftest", {"plan": "free", "source": "careersniper-selftest"}))
+    ok2 = await _call("track", lambda c: c.track("careersniper-selftest", "integration_test", message_id="careersniper-selftest"))
     return f"{'OK  ' if ok1 and ok2 else 'FAIL'} identify={'accepted' if ok1 else 'refused'}  track={'accepted' if ok2 else 'refused'}  at {config.LOOMAIL_URL}"
