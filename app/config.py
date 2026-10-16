@@ -153,6 +153,9 @@ APP_ENV = os.getenv("APP_ENV", "development")
 IS_PROD = APP_ENV.lower() == "production"
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+# Loomail (lifecycle email): product events are sent from the server with the secret key (mf_live_...). Empty key = switched off.
+LOOMAIL_URL = os.getenv("LOOMAIL_URL", "https://loomail.site")
+LOOMAIL_SECRET_KEY = os.getenv("LOOMAIL_SECRET_KEY", "")
 ALLOW_CONSOLE_MAIL = os.getenv("ALLOW_CONSOLE_MAIL", "0") == "1"
 
 

@@ -53,6 +53,9 @@ async def run(db: AsyncSession, now: datetime | None = None) -> dict:
             await db.rollback()
             continue                               # already reminded for this period
         await db.commit()
+        from . import loomail
+        loomail.emit(email=sub.customer_email, event="plan_expiring", dedupe=f"{sub.id}:{sub.current_period_end:%Y%m%d}",
+                     properties={"plan": sub.plan, "ends": f"{sub.current_period_end:%Y-%m-%d}"})
         new_jobs = (await db.scalar(select(func.count()).select_from(Job).where(Job.first_seen >= (sub.current_period_start or now - timedelta(days=7))))) or 0
         try:
             subject, text, html = _message(sub, new_jobs)

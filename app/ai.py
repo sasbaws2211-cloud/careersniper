@@ -26,7 +26,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import billing, config, runtime_settings
+from . import billing, config, loomail, runtime_settings
 from .models import AiUsage, Member
 
 log = logging.getLogger("careersniper.ai")
@@ -356,6 +356,8 @@ async def run(db: AsyncSession, member: Member, tool: str, system: str, user: st
     db.add(AiUsage(member_id=member.id, tool=(tool if charge else FREE_PREFIX + tool)[:30], model=result.model[:60],
                    input_tokens=result.input_tokens, output_tokens=result.output_tokens))
     await db.commit()
+    if charge and tool in loomail.TOOL_EVENTS:
+        loomail.emit(member.id, loomail.TOOL_EVENTS[tool])
     return result
 
 

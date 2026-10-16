@@ -172,6 +172,11 @@ async def _main(argv):
             except ai.AIError as e:
                 print(f"FAIL  {e}")
                 raise SystemExit(1)
+        elif argv[:1] == ["loomail-check"]:
+            from . import loomail
+            out = await loomail.check()
+            print(out)
+            raise SystemExit(0 if out.startswith("OK") else 1)
         elif argv[:1] == ["funnel"]:
             from . import funnel
             print(funnel.render((await funnel.report(db, int(argv[1]) if len(argv) > 1 and argv[1].isdigit() else 30))))

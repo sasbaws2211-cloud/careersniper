@@ -520,6 +520,9 @@ async def _apply_initial(db, ps, tx, co: BillingCheckout, key: str, now: datetim
         await send_payment_receipt(payer, plan_label, amount_label)
     except Exception:
         pass
+    from . import loomail
+    loomail.emit(email=payer, event="paid", dedupe=co.tx_ref,
+                 properties={"plan": co.plan, "amount": round((co.amount_cents or 0) / 100, 2), "currency": co.currency})
     return {"outcome": "applied_initial", "email": payer, "plan": co.plan}
 
 
@@ -559,6 +562,8 @@ async def apply_renewal(db: AsyncSession, ps: PaystackClient, tx: dict) -> dict:
     if sub.status != "cancelled":
         sub.status = "active"
     await db.commit()
+    from . import loomail
+    loomail.emit(email=email, event="renewed", dedupe=str(tx.get("id") or tx.get("reference")), properties={"plan": sub.plan})
     return {"outcome": "applied_renewal", "email": email, "period_end": sub.current_period_end.isoformat()}
 
 
@@ -609,6 +614,8 @@ async def apply_subscription_cancelled(
     sub.status = "cancelled"
     sub.cancelled_at = now
     await db.commit()
+    from . import loomail
+    loomail.emit(email=sub.customer_email, event="subscription_cancelled", dedupe=str(sub.id), properties={"plan": sub.plan})
     return {"outcome": "applied_cancellation", "email": sub.customer_email}
 
 
@@ -652,6 +659,8 @@ async def cancel_for_email(db: AsyncSession, ps: PaystackClient, email: str, now
     sub.status = "cancelled"
     sub.cancelled_at = now or datetime.utcnow()
     await db.commit()
+    from . import loomail
+    loomail.emit(email=email, event="subscription_cancelled", dedupe=str(sub.id), properties={"plan": sub.plan})
 
 
 async def current_subscription(db: AsyncSession, email: str | None = None, user_id: int | None = None) -> Subscription | None:

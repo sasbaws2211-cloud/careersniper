@@ -32,7 +32,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail
 from . import search as search_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
@@ -580,6 +580,8 @@ async def apply_redirect(job_id: int, request: Request, org: Org = Depends(tenan
     url = job.url.strip()
     if not (url.startswith("http://") or url.startswith("https://") or url.startswith("mailto:")):
         raise HTTPException(404, "Job link unavailable")
+    if me:
+        loomail.emit(me.id, "apply_clicked", {"company": job.company.name if job.company else "", "title": (job.title or "")[:80]})
     if security.limiter.hit(f"go:{security.client_ip(request)}:{job.id}", 1, 600):
         try:
             db.add(ClickEvent(job_id=job.id))
@@ -650,6 +652,7 @@ async def member_signup(request: Request, org: Org = Depends(tenant), db: AsyncS
     code = request.session.pop("ref", None)             # came through a friend's invite link
     if code:
         await referrals.attach(db, m, code)
+    loomail.emit(m.id, "signed_up", {"referred": bool(code)}, dedupe="once")
     dest = members.safe_next(next)
     if dest in ("/", ""):
         dest = "/onboarding?welcome=1"                   # questionnaire first, then pricing / résumé
@@ -819,10 +822,14 @@ async def onboarding_save(
             org=None,
         ), status_code=e.status)
     await funnel.record(db, request, "onb_done", member_id=m.id, once=True)
+    loomail.emit(m.id, "onboarding_completed", {"has_resume": has_resume in ("1", "true", "yes", "on"),
+                                                "alerts_opt_in": alerts_opt_in in ("1", "true", "yes", "on")}, dedupe="once")
     if alerts_opt_in in ("1", "true", "yes", "on"):
         # they asked for emails about new roles for the titles they gave: one daily alert per title (confirmed by email unless the address is already confirmed)
         try:
-            await alerts.create_from_profile(db, m, onboarding_mod.lens_profile(await onboarding_mod.get_profile(db, m)))
+            made = await alerts.create_from_profile(db, m, onboarding_mod.lens_profile(await onboarding_mod.get_profile(db, m)))
+            if made:
+                loomail.emit(m.id, "alert_created", {"source": "onboarding", "count": len(made)})
         except Exception:
             await db.rollback()                      # never let a mail hiccup stop the sign-up
     safe = members.safe_next(next)
@@ -873,7 +880,10 @@ def member_logout(request: Request):
 
 @app.get("/member/verify/{token}", response_class=HTMLResponse)
 async def member_verify(token: str, request: Request, org: Org = Depends(tenant), db: AsyncSession = Depends(get_db)):
-    if not (await members.verify(db, org, token)):
+    confirmed = await members.verify(db, org, token)
+    if confirmed:
+        loomail.emit(confirmed.id, "email_verified", dedupe="once")
+    if not confirmed:
         return _member_page(request, org, "Link not valid", "This confirmation link is invalid or has expired. Log in and request a new one from your account page.", 404)
     return _member_page(request, org, "Email confirmed", "Thanks! Your email is confirmed.")
 
@@ -1103,6 +1113,7 @@ async def resume_save(request: Request, db: AsyncSession = Depends(get_db), text
     except resume_mod.ResumeError as e:
         return await _resume_page(request, m, db, text=text, error=str(e), code=e.status)
     note = await _read_profile(request, db, m, r)
+    loomail.emit(m.id, "resume_uploaded", {"via": "paste"})
     return RedirectResponse("/resume?saved=1" + (f"&note={note}" if note else ""), status_code=303)
 
 
@@ -1140,6 +1151,7 @@ async def resume_upload_route(request: Request, db: AsyncSession = Depends(get_d
     except resume_mod.ResumeError as e:
         return await _resume_page(request, m, db, error=str(e), code=e.status)
     note = await _read_profile(request, db, m, r)
+    loomail.emit(m.id, "resume_uploaded", {"via": "upload"})
     return RedirectResponse("/resume?saved=1&uploaded=1" + (f"&note={note}" if note else ""), status_code=303)
 
 
@@ -1904,6 +1916,8 @@ async def alerts_subscribe(request: Request, org: Org = Depends(tenant), db: Asy
         return _alert_page(request, org, "Couldn't set up the alert", str(e), 400)
     except mailer.MailError:
         return _alert_page(request, org, "Couldn't send the email", "Please try again in a few minutes.", 502)
+    if me:
+        loomail.emit(me.id, "alert_created", {"source": "search"})
     if trusted:
         return _alert_page(request, org, "Alert is on", f"You'll get {sub.frequency} emails when new jobs match this search. Manage alerts on your account page.")
     if sub.confirmed:
@@ -2269,6 +2283,8 @@ async def alerts_from_resume(request: Request, db: AsyncSession = Depends(get_db
     r = await resume_mod.get_main(db, m)
     profile = (r.data or {}).get("profile") if r else None
     made = await alerts.create_from_profile(db, m, profile)
+    if made:
+        loomail.emit(m.id, "alert_created", {"source": "resume", "count": len(made)})
     msg = f"Alerts are on for {len(made)} job title{'s' if len(made) != 1 else ''} from your résumé." if made else "Upload your résumé first so we know which jobs to watch for."
     return RedirectResponse("/account?msg=" + quote(msg), status_code=303)
 
@@ -2311,6 +2327,8 @@ async def checkout_page(request: Request, plan: str = "monthly", next: str = "",
         request.session["pay_next"] = members.safe_next(next)
     await funnel.record(db, request, "checkout_start", once=True)
     member = await current_member(request, db)
+    if member:
+        loomail.emit(member.id, "checkout_started", {"plan": plan})
     info = config.CONSUMER_PLANS[plan]
     return templates.TemplateResponse(request, "checkout.html", {
         "plan": plan, "info": info, "plans": config.CONSUMER_PLANS,
