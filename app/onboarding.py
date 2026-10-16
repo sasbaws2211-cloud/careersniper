@@ -148,6 +148,17 @@ async def save_profile(
     return p
 
 
+# the questionnaire's levels in the résumé lens' words
+_LEVEL_TO_SENIORITY = {"entry": "junior", "mid": "mid", "senior": "senior", "lead": "lead"}
+
+
+def lens_profile(p: MemberProfile | None) -> dict | None:
+    """The job titles and level the member gave, shaped like a résumé profile so the board can filter by it. None without titles."""
+    if not p or not (p.desired_titles or []):
+        return None
+    return {"titles": list(p.desired_titles), "seniority": _LEVEL_TO_SENIORITY.get(p.experience_level or "", "")}
+
+
 def pitch_for_frustration(frustration: str) -> dict[str, str]:
     pitches = {
         "no_reply": {

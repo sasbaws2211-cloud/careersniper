@@ -32,11 +32,12 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel
 from . import search as search_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
 from . import classify as classify_mod
+from . import regions as regions_mod
 from . import direct
 from . import filters as filters_mod
 from . import scrapers as scrapers_mod
@@ -385,6 +386,9 @@ async def search_page(db: AsyncSession, org: Org, qs: str, loc: str, remote: boo
 
 
 # ---------------------------------------------------------------- public B2C board
+# the countries offered in the landing page's "I live in" list: most visited first, then alphabetical
+PICKER_COUNTRIES = [("", "Anywhere in the world")] + [(c, classify_mod.COUNTRY_NAMES.get(c, c)) for c in (
+    "US", "GB", "CA", "AU", "DE", "NL", "IE", "FR", "ES", "IN", "PK", "BD", "PH", "SG", "NG", "GH", "KE", "ZA", "EG", "BR", "MX", "CO", "AR")]
 PREVIEW_DESC_CHARS = 1500   # enough to judge fit: the apply link and the filters are what is behind the paywall
 
 
@@ -422,26 +426,32 @@ async def site_stats(db: AsyncSession, force: bool = False) -> dict | None:
     if not force and _stats_cache["value"] is not None and time.time() - _stats_cache["at"] < STATS_TTL:
         return _stats_cache["value"] or None
     if not force:
-        shared = await cache_mod.get_json("public:site-stats:v1")
-        if (isinstance(shared, dict) and isinstance(shared.get("jobs"), int)
-                and isinstance(shared.get("companies"), int) and isinstance(shared.get("updated"), str)):
+        shared = await cache_mod.get_json("public:site-stats:v2")
+        if (isinstance(shared, dict) and isinstance(shared.get("jobs"), int) and isinstance(shared.get("companies"), int)
+                and isinstance(shared.get("updated"), str) and isinstance(shared.get("new_7d"), int) and isinstance(shared.get("pay_pct"), int)):
             _stats_cache.update(at=time.time(), value=shared)
             return shared
     live = feed_query().subquery()
     jobs = (await db.scalar(select(func.count()).select_from(live))) or 0
     companies = (await db.scalar(select(func.count(func.distinct(live.c.company_id))))) or 0
     last = await db.scalar(select(func.max(Company.last_scraped)).where(Company.active.is_(True)))
-    value = {"jobs": jobs, "companies": companies, "updated": ago(last)} if jobs else {}
+    # real numbers only: what was posted (or first seen) this week, and how many listings state a pay range
+    week = datetime.utcnow() - timedelta(days=7)
+    new_7d = (await db.scalar(select(func.count()).select_from(live).where(func.coalesce(live.c.posted_at, live.c.first_seen) >= week))) or 0
+    paid = (await db.scalar(select(func.count()).select_from(live).where(live.c.pay_max_usd > 0))) or 0
+    value = ({"jobs": jobs, "companies": companies, "updated": ago(last), "new_7d": new_7d, "pay_pct": round(100 * paid / jobs) if jobs else 0}
+             if jobs else {})
     _stats_cache.update(at=time.time(), value=value)
     if value:
-        await cache_mod.set_json("public:site-stats:v1", value, STATS_TTL)
+        await cache_mod.set_json("public:site-stats:v2", value, STATS_TTL)
     return value or None
 
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_db)):
-    """Marketing homepage (CareerHound-style)."""
-    return templates.TemplateResponse(request, "marketing.html", {"stats": (await site_stats(db))})
+    """Marketing homepage."""
+    await funnel.record(db, request, "landing_view", once=True)
+    return templates.TemplateResponse(request, "marketing.html", {"stats": (await site_stats(db)), "picker_countries": PICKER_COUNTRIES})
 
 
 @app.get("/refunds", response_class=HTMLResponse)
@@ -511,9 +521,14 @@ async def job_search(request: Request, db: AsyncSession = Depends(get_db), q: st
         rows = rows[: config.PREVIEW_JOB_LIMIT]
     saved = {jid for jid, st in reactions.items() if st in ("liked", "saved", "applied")}
     sib = await dedupe.locations_for(db, feed_query(org), rows)
+    if member:
+        await funnel.record(db, request, "matches_view", "lens" if lens_ctx["lens"] is not None else "all", member_id=member.id, once=True)
+    if not has_access and total > config.PREVIEW_JOB_LIMIT:
+        await funnel.record(db, request, "paywall_view", once=True)
     return templates.TemplateResponse(request, "board.html", dict(
         why=({j.id: lens_ctx["lens"].why(j.title) for j in rows} if lens_ctx["lens"] is not None else {}),
         lens_offer=lens_ctx["offer"], lens_on=lens_ctx["lens"] is not None, lens_paused=lens_ctx["paused"], lens_hint=lens_ctx["hint"], for_all=lens_ctx["for_all"],
+        lens_source=lens_ctx["source"], refund_days=config.REFUND_DAYS,
         unlocked=bool(unlocked and has_access), sort=sort, sorts=SORTS, sib=sib, saved=saved, reactions=reactions, org=org, jobs=rows, total=total, q=q, loc=loc,
         remote=remote, days=days, page=page,
         flt=flt, countries=(await filters_mod.country_options(db, feed_query(org), _feed_key(org))), job_types=filters_mod.TYPES,
@@ -631,6 +646,7 @@ async def member_signup(request: Request, org: Org = Depends(tenant), db: AsyncS
         m.verified = True                                # they paid with this address in this browser: that proves the mailbox
         await db.commit()
     start_member_session(request, m)
+    await funnel.record(db, request, "signup_done", member_id=m.id, once=True)
     code = request.session.pop("ref", None)             # came through a friend's invite link
     if code:
         await referrals.attach(db, m, code)
@@ -642,15 +658,83 @@ async def member_signup(request: Request, org: Org = Depends(tenant), db: AsyncS
     return _remember_member(RedirectResponse(dest, status_code=303))
 
 
+_teaser_cache: dict = {}
+TEASER_TTL = 600        # the same search by another visitor within ten minutes costs nothing
+
+
+@app.get("/api/v1/teaser")
+async def landing_teaser(request: Request, db: AsyncSession = Depends(get_db), title: str = "", country: str = ""):
+    """Public, no sign-in: how many roles match a job title for someone in a country, and three of them. Feeds the landing-page search."""
+    throttle(request, "teaser", 30, 60)
+    org = resolve_org(request, db)
+    title = " ".join((title or "").split())[:60]
+    code = (country or "").strip().upper()
+    code = code if code in regions_mod.VALID_REGIONS else ""
+    name = regions_mod.REGION_NAMES.get(code) or classify_mod.COUNTRY_NAMES.get(code, "")
+
+    key = (title.lower(), code)
+    hit = _teaser_cache.get(key)
+    if hit and time.time() - hit[0] < TEASER_TTL:
+        return hit[1]
+
+    async def count(flt):
+        """Distinct listings matching, without fetching any rows (cheap: the page itself is fetched once, below)."""
+        for fts in ([True, False] if title and search_mod.is_pg() else [False]):
+            n = (await db.scalar(search(org, title, "", False, 0, fts=fts, flt=flt).with_only_columns(func.count(func.distinct(dedupe.group_key()))))) or 0
+            if n or not fts:
+                return n
+        return 0
+    flt_remote, flt_local, flt_visa = Filters.make(remote_from=code), Filters.make(country=code), Filters.make(visa="yes")
+    remote_total = await count(flt_remote)                                                      # remote roles open to that country (or anywhere)
+    local_total = (await count(flt_local)) if code in classify_mod.COUNTRY_NAMES else 0
+    visa_total = await count(flt_visa)
+    first = flt_remote if remote_total else flt_local if local_total else flt_visa if visa_total else None
+    rows = (await search_page(db, org, title, "", False, 0, 0, 3, flt=first))[1] if first is not None else []
+    now = datetime.utcnow()
+
+    def pay(j):
+        if j.pay_max_usd and j.pay_max_usd > 0:
+            lo = j.pay_min_usd or j.pay_max_usd
+            return "about $" + format(lo, ",") + (("-$" + format(j.pay_max_usd, ",")) if lo != j.pay_max_usd else "") + " a year"
+        return ""
+    query = {"q": title} if title else {}
+    if code:
+        query["remote_from"] = code
+    onboarding = "/onboarding?" + urlencode({"welcome": 1, **({"titles": title} if title else {}), **({"country": code} if code in classify_mod.COUNTRY_NAMES else {})})
+    result = {"title": title, "country": code, "country_name": name, "remote": remote_total, "local": local_total, "visa": visa_total,
+            "jobs": [{"id": j.id, "title": j.title, "company": j.company.name if j.company else (j.company_name or ""), "location": (j.location or "")[:60],
+                      "pay": pay(j), "days": max(0, (now - (j.posted_at or j.first_seen or now)).days), "url": f"/jobs/{j.id}"} for j in rows],
+            "see_all": "/jobs" + ("?" + urlencode(query) if query else ""), "signup": "/member/signup?next=" + quote(onboarding, safe="")}
+    if len(_teaser_cache) > 500:
+        _teaser_cache.clear()
+    _teaser_cache[key] = (time.time(), result)
+    return result
+
+
+@app.post("/events")
+async def client_event(request: Request, db: AsyncSession = Depends(get_db)):
+    """A step the browser itself reports (the hero search used, a questionnaire step reached). Whitelisted names, no personal data."""
+    throttle(request, "events", 120, 60)
+    try:
+        body = await request.json()
+    except Exception:
+        return Response(status_code=204)
+    event, detail = str(body.get("event", "")) if isinstance(body, dict) else "", str(body.get("detail", ""))[:40] if isinstance(body, dict) else ""
+    if event in funnel.CLIENT_EVENTS:
+        await funnel.record(db, request, event, detail, member_id=request.session.get("mid"), once=True)
+    return Response(status_code=204)
+
+
 # ── First-time onboarding questionnaire ─────────────────────────────────────
 
 @app.get("/onboarding", response_class=HTMLResponse)
-async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), next: str = "/", plan: str = ""):
+async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), next: str = "/", plan: str = "", edit: int = 0,
+                          titles: str = "", country: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/onboarding", status_code=303)
     selected_plan = plan if plan in billing.PAID_PLANS else ""
-    if await onboarding_mod.is_complete(db, m):
+    if await onboarding_mod.is_complete(db, m) and not edit:      # ?edit=1 reopens the answers to change them
         dest = members.safe_next(next)
         if selected_plan:
             dest = "/checkout?" + urlencode({"plan": selected_plan, "next": dest if dest not in ("", "/") else "/jobs"})
@@ -673,6 +757,7 @@ async def onboarding_form(request: Request, db: AsyncSession = Depends(get_db), 
         salary_ranges=onboarding_mod.SALARY_RANGES,
         frustrations=onboarding_mod.FRUSTRATIONS,
         countries=onboarding_mod.COMMON_COUNTRIES,
+        prefill_titles=" ".join(titles.split())[:200], prefill_country=classify_mod.COUNTRY_NAMES.get(country.upper(), "")[:60],
         error="",
         org=None,
     ))
@@ -694,6 +779,7 @@ async def onboarding_save(
     remote_preference: str = Form(""),
     main_frustration: str = Form(""),
     has_resume: str = Form(""),
+    alerts_opt_in: str = Form(""),
 ):
     m = await current_member(request, db)
     if not m:
@@ -710,6 +796,7 @@ async def onboarding_save(
         "main_frustration": main_frustration,
         "has_resume": has_resume,
     }
+    data = {k: v for k, v in data.items() if v not in ("", [], None)}
     try:
         await onboarding_mod.save_profile(db, m, data, mark_complete=True)
     except onboarding_mod.OnboardingError as e:
@@ -727,9 +814,17 @@ async def onboarding_save(
             salary_ranges=onboarding_mod.SALARY_RANGES,
             frustrations=onboarding_mod.FRUSTRATIONS,
             countries=onboarding_mod.COMMON_COUNTRIES,
+            prefill_titles="", prefill_country="",
             error=str(e),
             org=None,
         ), status_code=e.status)
+    await funnel.record(db, request, "onb_done", member_id=m.id, once=True)
+    if alerts_opt_in in ("1", "true", "yes", "on"):
+        # they asked for emails about new roles for the titles they gave: one daily alert per title (confirmed by email unless the address is already confirmed)
+        try:
+            await alerts.create_from_profile(db, m, onboarding_mod.lens_profile(await onboarding_mod.get_profile(db, m)))
+        except Exception:
+            await db.rollback()                      # never let a mail hiccup stop the sign-up
     safe = members.safe_next(next)
     after_pay = safe if safe not in ("/", "") else (
         "/resume?welcome=1" if has_resume in ("1", "true", "yes", "on") else "/jobs?onboarded=1"
@@ -2081,16 +2176,19 @@ def invite_accept_removed(token: str):
 # ---------------------------------------------------------------- résumé-aware board: profile lens, upload and the per-job coach
 async def _lens_context(db: AsyncSession, member: Member | None, q: str, for_: str) -> dict:
     """What the board needs to filter by the member's résumé: the lens (None = show everything), whether one is on offer, and why not."""
-    out = {"lens": None, "offer": None, "paused": False, "hint": False, "for_all": for_ == "all"}
+    out = {"lens": None, "offer": None, "paused": False, "hint": False, "for_all": for_ == "all", "source": ""}
     if not member:
         return out
     r = await resume_mod.get_main(db, member)
-    if not r or not resume_mod.text_of(r):
-        out["hint"] = True
-        return out
-    offer = lens_mod.Lens.from_profile((r.data or {}).get("profile"))
+    offer = lens_mod.Lens.from_profile((r.data or {}).get("profile")) if r and resume_mod.text_of(r) else None
+    out["source"] = "resume" if offer else ""
+    if offer is None:
+        # no résumé profile yet: use what the member said in the questionnaire (job titles and level), so those answers do something
+        offer = lens_mod.Lens.from_profile(onboarding_mod.lens_profile(await onboarding_mod.get_profile(db, member)))
+        out["source"] = "profile" if offer else ""
     out["offer"] = offer
     if offer is None:
+        out["hint"] = True
         return out
     if (q or "").strip():
         out["paused"] = True                       # a specific search always wins over the résumé view
@@ -2169,6 +2267,7 @@ async def _remember_payer(request: Request, db: AsyncSession, reference: str) ->
     co = await db.scalar(select(BillingCheckout).where(BillingCheckout.tx_ref == reference)) if reference else None
     if co and co.status == "paid" and co.customer_email:
         request.session["paid_email"] = co.customer_email.strip().lower()
+        await funnel.record(db, request, "paid", once=True)
 
 
 @app.get("/checkout", response_class=HTMLResponse)
@@ -2178,6 +2277,7 @@ async def checkout_page(request: Request, plan: str = "monthly", next: str = "",
         plan = "monthly"
     if next:
         request.session["pay_next"] = members.safe_next(next)
+    await funnel.record(db, request, "checkout_start", once=True)
     member = await current_member(request, db)
     info = config.CONSUMER_PLANS[plan]
     return templates.TemplateResponse(request, "checkout.html", {

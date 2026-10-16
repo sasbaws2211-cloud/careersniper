@@ -1,4 +1,4 @@
-"""python -m app.cli migrate | bootstrap | scrape | digests | mail-test [email] | add <ats> <token> <Name> | discover candidates <file> | discover crawl | verify | prune-dead | data-health | reclassify | doctor"""
+"""python -m app.cli migrate | funnel [days] | bootstrap | scrape | digests | mail-test [email] | add <ats> <token> <Name> | discover candidates <file> | discover crawl | verify | prune-dead | data-health | reclassify | doctor"""
 import asyncio
 import sys
 
@@ -172,6 +172,9 @@ async def _main(argv):
             except ai.AIError as e:
                 print(f"FAIL  {e}")
                 raise SystemExit(1)
+        elif argv[:1] == ["funnel"]:
+            from . import funnel
+            print(funnel.render((await funnel.report(db, int(argv[1]) if len(argv) > 1 and argv[1].isdigit() else 30))))
         elif argv[:1] == ["ai-usage"]:
             from . import ai
             rows = await ai.usage_report(db)

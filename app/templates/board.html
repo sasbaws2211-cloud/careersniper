@@ -52,25 +52,31 @@
 {% set onboarding_pricing = ('/onboarding?welcome=1&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
 {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
 <div class="card" style="background:#eff6ff;border-color:#93c5fd;margin-bottom:16px;color:#1f2937;">
-  <b>You're viewing a free preview.</b>
-  {% if total > (jobs|length) %}
-    <span>{{ total - (jobs|length) }} more matching job{{ '' if (total - jobs|length) == 1 else 's' }} are behind the paywall.</span>
+  {% if lens_on and total > (jobs|length) %}
+    <b>{{ '{:,}'.format(total) }} roles match {{ lens_offer.summary }}.</b>
+    <span>You are seeing {{ jobs|length }} in the free preview; the other {{ '{:,}'.format(total - (jobs|length)) }} unlock with a plan.</span>
+  {% else %}
+    <b>You're viewing a free preview.</b>
+    {% if total > (jobs|length) %}
+      <span>{{ '{:,}'.format(total - (jobs|length)) }} more matching job{{ '' if (total - jobs|length) == 1 else 's' }} are behind the paywall.</span>
+    {% endif %}
   {% endif %}
   Unlock the full database, all filters, and direct apply from $7/week.
   <a class="btn" href="{% if memail %}/pricing{% else %}/member/signup?next={{ onboarding_pricing }}{% endif %}" style="margin-left:8px">See plans</a>
   <a class="btn" href="{% if memail %}/checkout?plan=monthly{% else %}/member/signup?next={{ onboarding_monthly }}{% endif %}" style="margin-left:6px;background:#111">Get Monthly — $20</a>
+  <div class="muted" style="font-size:13px;margin-top:8px">{{ refund_days }}-day money-back promise on every plan. Cancel any time.</div>
 </div>
 {% endif %}
 
 {% if lens_on %}
 <div class="card lens" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand)">
-  <span><b>Jobs that match your résumé</b> <span class="muted">{{ lens_offer.summary }}</span></span>
-  <span style="display:flex;gap:14px"><a href="/resume">Edit</a><a href="/jobs?for=all">Show all jobs</a></span>
+  <span><b>Jobs that match {{ 'your résumé' if lens_source == 'resume' else 'your answers' }}</b> <span class="muted">{{ lens_offer.summary }}</span></span>
+  <span style="display:flex;gap:14px"><a href="{{ '/resume' if lens_source == 'resume' else '/onboarding?edit=1&next=/jobs' }}">Edit</a><a href="/jobs?for=all">Show all jobs</a></span>
 </div>
 {% elif lens_offer and lens_paused %}
-<div class="card muted" style="padding:10px 14px">Your résumé view is paused while you search. <a href="/jobs">Back to jobs that match your résumé</a></div>
+<div class="card muted" style="padding:10px 14px">Your {{ 'résumé' if lens_source == 'resume' else 'matching' }} view is paused while you search. <a href="/jobs">Back to jobs that match {{ 'your résumé' if lens_source == 'resume' else 'your answers' }}</a></div>
 {% elif lens_offer and for_all %}
-<div class="card muted" style="padding:10px 14px">Showing all jobs. <a href="/jobs">Show only jobs that match your résumé ({{ lens_offer.summary }})</a></div>
+<div class="card muted" style="padding:10px 14px">Showing all jobs. <a href="/jobs">Show only jobs that match {{ 'your résumé' if lens_source == 'resume' else 'your answers' }} ({{ lens_offer.summary }})</a></div>
 {% elif lens_hint %}
 <div class="card" style="padding:10px 14px"><b>See jobs that fit you.</b> <a href="/resume">Upload your résumé</a> and this page shows the roles that match your experience.</div>
 {% endif %}

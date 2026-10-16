@@ -150,6 +150,18 @@ class ClickEvent(SQLModel, table=True):
     created_at: NaiveDatetime = Field(default_factory=_now, index=True)
 
 
+class FunnelEvent(SQLModel, table=True):
+    """One step a visitor took on the way from landing page to payment. No personal data: a random per-browser id, the step's name and
+    a short detail (such as the onboarding step number). Read with `python -m app.cli funnel`."""
+    __tablename__ = "funnel_events"
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: NaiveDatetime = Field(default_factory=_now, index=True)
+    sid: str = Field(max_length=24, index=True)
+    event: str = Field(max_length=32, index=True)
+    detail: str = Field(default="", max_length=40)
+    member_id: int | None = Field(default=None, index=True)
+
+
 class BillingProviderPlan(SQLModel, table=True):
     """Flutterwave payment-plan ids, created lazily per (plan, interval, currency, price)."""
     __tablename__ = "billing_provider_plans"

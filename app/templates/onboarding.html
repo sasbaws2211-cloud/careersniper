@@ -105,9 +105,9 @@
   </div>
 
   <div class="ob-progress" id="progress" aria-hidden="true">
-    <span class="current"></span><span></span><span></span><span></span>
-    <span></span><span></span>
+    <span class="done"></span><span data-p class="current"></span><span data-p></span><span data-p></span>
   </div>
+  <p class="muted" id="ob-count" style="margin:-14px 0 20px;font-size:13px">Account created &#10003; &middot; step 1 of 3</p>
 
   {% if error %}<div class="err">{{ error }}</div>{% endif %}
 
@@ -115,45 +115,17 @@
     <input type="hidden" name="next" value="{{ next }}">
     <input type="hidden" name="plan" value="{{ plan }}">
 
-    {# ── Step 1: Employment status ─────────────────────────────────────── #}
+    {# ── Step 1: the role: titles + level ──────────────────────────────── #}
     <div class="ob-step active" data-step="0">
-      <h2>What’s your current situation?</h2>
-      <p class="sub">This helps us know how urgent the search is for you.</p>
-      <div class="ob-options">
-        {% for value, label in employment_status %}
-        <label class="choice">
-          <input type="radio" name="employment_status" value="{{ value }}"
-                 {% if profile and profile.employment_status == value %}checked{% endif %} required>
-          {{ label }}
-        </label>
-        {% endfor %}
-      </div>
-      <div class="ob-nav">
-        <span></span>
-        <button type="button" class="btn" data-next>Continue</button>
-      </div>
-    </div>
-
-    {# ── Step 2: Desired job title ─────────────────────────────────────── #}
-    <div class="ob-step" data-step="1">
-      <h2>What job title are you aiming for?</h2>
-      <p class="sub">You can add more than one. We’ll use these to rank and alert you.</p>
-      <label>Desired title(s)
+      <h2>What role are you looking for?</h2>
+      <p class="sub">We use this to show you the jobs that match, right after the next two questions.</p>
+      <label>Job title(s)
         <input type="text" name="desired_titles" placeholder="e.g. Software Engineer, Product Manager"
-               value="{{ profile.desired_titles|join(', ') if profile and profile.desired_titles else '' }}"
-               required maxlength="200">
+               value="{{ profile.desired_titles|join(', ') if profile and profile.desired_titles else prefill_titles }}"
+               required maxlength="200" autofocus>
       </label>
-      <p class="muted" style="font-size:13px;margin-top:6px">Separate multiple titles with commas.</p>
-      <div class="ob-nav">
-        <button type="button" class="btn-back" data-back>Back</button>
-        <button type="button" class="btn" data-next>Continue</button>
-      </div>
-    </div>
-
-    {# ── Step 3: Experience level ──────────────────────────────────────── #}
-    <div class="ob-step" data-step="2">
-      <h2>What’s your target experience level?</h2>
-      <p class="sub">We’ll filter the board to roles at this seniority.</p>
+      <p class="muted" style="font-size:13px;margin:6px 0 18px">Separate several titles with commas.</p>
+      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Your level</p>
       <div class="ob-options">
         {% for value, label in experience_levels %}
         <label class="choice">
@@ -164,57 +136,22 @@
         {% endfor %}
       </div>
       <div class="ob-nav">
-        <button type="button" class="btn-back" data-back>Back</button>
+        <span></span>
         <button type="button" class="btn" data-next>Continue</button>
       </div>
     </div>
 
-    {# ── Step 4: Salary range + job type ────────────────────────────────── #}
-    <div class="ob-step" data-step="3">
-      <h2>Salary &amp; job type</h2>
-      <p class="sub">Optional — helps us hide roles that are a poor fit.</p>
-
-      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Minimum salary expectation (annual, USD)</p>
-      <div class="ob-options" style="margin-bottom:18px">
-        {% for value, label in salary_ranges %}
-        <label class="choice">
-          <input type="radio" name="salary_range" value="{{ value }}"
-                 {% if profile and profile.salary_min is not none and value == profile.salary_min|string %}checked{% endif %}>
-          {{ label }}
-        </label>
-        {% endfor %}
-      </div>
-
-      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Job type that fits you</p>
-      <div class="ob-chips">
-        {% for value, label in job_types %}
-        <label class="chip">
-          <input type="checkbox" name="job_types" value="{{ value }}"
-                 {% if profile and value in (profile.job_types or []) %}checked{% elif not profile and value == 'full-time' %}checked{% endif %}>
-          {{ label }}
-        </label>
-        {% endfor %}
-      </div>
-
-      <div class="ob-nav">
-        <button type="button" class="btn-back" data-back>Back</button>
-        <button type="button" class="btn" data-next>Continue</button>
-      </div>
-    </div>
-
-    {# ── Step 5: Location & remote ─────────────────────────────────────── #}
-    <div class="ob-step" data-step="4">
+    {# ── Step 2: where from ───────────────────────────────────────────── #}
+    <div class="ob-step" data-step="1">
       <h2>Where will you work from?</h2>
-      <p class="sub">Country and remote preference.</p>
-
+      <p class="sub">So we can point you to remote jobs that are open to your country.</p>
       <label>Country
         <input type="text" name="work_country" list="country-list" placeholder="Start typing…"
-               value="{{ profile.work_country if profile else '' }}" maxlength="60">
+               value="{{ profile.work_country if profile and profile.work_country else prefill_country }}" maxlength="60">
         <datalist id="country-list">
           {% for c in countries %}<option value="{{ c }}">{% endfor %}
         </datalist>
       </label>
-
       <p style="margin:18px 0 8px;font-size:13px;color:var(--muted)">Remote preference</p>
       <div class="ob-options">
         {% for value, label in remote_prefs %}
@@ -225,19 +162,18 @@
         </label>
         {% endfor %}
       </div>
-
       <div class="ob-nav">
         <button type="button" class="btn-back" data-back>Back</button>
         <button type="button" class="btn" data-next>Continue</button>
       </div>
     </div>
 
-    {# ── Step 6: Frustration + résumé + pitch → pricing ────────────────── #}
-    <div class="ob-step" data-step="5">
-      <h2>Almost done</h2>
-      <p class="sub">One more question, then we’ll show you how CareerSniper helps.</p>
+    {# ── Step 3: the one thing that tailors the pitch, résumé, alerts, go ── #}
+    <div class="ob-step" data-step="2">
+      <h2>Last step</h2>
+      <p class="sub">Two quick things, then your matches.</p>
 
-      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">What’s most frustrating in your job search right now?</p>
+      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">What is most frustrating in your job search right now? <span class="muted">(optional)</span></p>
       <div class="ob-options" style="margin-bottom:18px">
         {% for value, label in frustrations %}
         <label class="choice">
@@ -248,11 +184,11 @@
         {% endfor %}
       </div>
 
-      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Do you currently have a résumé?</p>
+      <p style="margin:0 0 8px;font-size:13px;color:var(--muted)">Do you have a résumé ready?</p>
       <div class="ob-options" style="margin-bottom:20px">
         <label class="choice">
           <input type="radio" name="has_resume" value="1" {% if profile and profile.has_resume == true %}checked{% endif %}>
-          Yes — I’ll upload it after
+          Yes &mdash; I&rsquo;ll upload it after
         </label>
         <label class="choice">
           <input type="radio" name="has_resume" value="0" {% if profile and profile.has_resume == false %}checked{% endif %}>
@@ -266,20 +202,28 @@
         <p id="pitch-body">{{ pitch.body }}</p>
       </div>
 
+      <div class="ob-options" style="margin-bottom:14px">
+        <label class="choice">
+          <input type="checkbox" name="alerts_opt_in" value="1" checked>
+          Email me new roles that match my job titles (daily, you can stop any time)
+        </label>
+      </div>
+
       <div class="ob-next-line">
         <b>What happens next:</b>
-        Choose a plan to unlock full search, filters, alerts, and AI résumé tailoring.
-        You can still preview jobs for free.
+        You will see the jobs that match your answers right away, free. Plans unlock full search, all filters, direct apply and the AI résumé tools
+        when you are ready.
       </div>
 
       <div class="ob-cta-stack">
-        <button type="submit" class="btn" name="intent" value="pricing">
-          See plans &amp; unlock access →
+        <button type="submit" class="btn" name="intent" value="preview">
+          Show my matches →
         </button>
-        <button type="submit" class="btn-secondary" name="intent" value="preview"
+        <button type="submit" class="btn-secondary" name="intent" value="pricing"
                 style="background:transparent;color:var(--text);border:1px solid var(--line);width:100%;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer">
-          Continue with free preview
+          See plans &amp; unlock access
         </button>
+        <p class="muted" style="text-align:center;font-size:13px;margin:2px 0 0">No card needed for the preview &middot; {{ REFUND_DAYS }}-day money-back promise on every plan</p>
       </div>
 
       <div class="ob-nav" style="margin-top:16px">
@@ -290,14 +234,16 @@
   </form>
 
   <div class="ob-skip">
-    <a href="/pricing{% if next %}?next={{ next|urlencode }}{% endif %}">Skip questionnaire → go to pricing</a>
+    <a href="{{ next if next and next != '/' else '/jobs' }}">Skip for now &mdash; show me the jobs</a>
   </div>
 </div>
 
 <script>
 (function () {
   const steps = Array.from(document.querySelectorAll('.ob-step'));
-  const progress = document.querySelectorAll('#progress span');
+  const progress = document.querySelectorAll('#progress span[data-p]');
+  const count = document.getElementById('ob-count');
+  const seen = new Set();
   let current = 0;
 
   const pitches = {
@@ -331,6 +277,13 @@
     }
   };
 
+  // which questionnaire steps people reach, so the longest-drop step can be shortened (no answers are sent)
+  function report(i) {
+    if (seen.has(i)) return;
+    seen.add(i);
+    try { fetch('/events', {method: 'POST', headers: {'Content-Type': 'application/json'}, keepalive: true, body: JSON.stringify({event: 'onb_step', detail: 'step' + (i + 1)})}); } catch (e) {}
+  }
+
   function show(i) {
     steps.forEach((s, idx) => s.classList.toggle('active', idx === i));
     progress.forEach((p, idx) => {
@@ -339,6 +292,8 @@
       else if (idx === i) p.classList.add('current');
     });
     current = i;
+    if (count) count.innerHTML = 'Account created &#10003; &middot; step ' + (i + 1) + ' of ' + steps.length;
+    report(i);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (i === steps.length - 1) {
@@ -390,6 +345,8 @@
       }
     });
   });
+
+  report(0);
 
   document.getElementById('ob-form').addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'text') {

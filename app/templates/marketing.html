@@ -33,19 +33,33 @@
   .counter { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 0 0 20px; padding: 8px 16px;
              border: 1px solid rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .14); color: #fff; border-radius: 999px; font-size: 0.95rem; }
   .counter b { font-weight: 700; }
-  .proof {
-    max-width: 1040px; margin: 28px auto 8px; padding: 0 16px;
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  }
-  @media (max-width: 720px) { .proof { grid-template-columns: 1fr; } }
-  .proof .quote {
-    background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px;
-    font-size: 0.92rem; color: #374151; line-height: 1.45;
-  }
-  .proof .quote .who { margin-top: 10px; font-size: 0.8rem; color: #6b7280; font-weight: 600; }
-  .proof-bar {
-    text-align: center; color: #6b7280; font-size: 0.9rem; margin: 8px auto 24px; max-width: 640px;
-  }
+  .picker { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: flex-end; background: #fff; border-radius: 14px; padding: 14px;
+            max-width: 720px; margin: 8px auto 10px; box-shadow: 0 10px 30px rgba(15, 23, 42, .25); text-align: left; }
+  .picker .pk { flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; margin: 0; color: #334155; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .picker input, .picker select { font: inherit; font-size: 1rem; font-weight: 500; text-transform: none; letter-spacing: 0; color: #0f172a; padding: 11px 12px; border: 1px solid #94a3b8; border-radius: 8px; width: 100%; background: #fff; }
+  .picker .pk-go { flex: 0 0 auto; background: #2563eb; color: #fff; font-weight: 700; font-size: 1rem; padding: 12px 22px; border: 0; border-radius: 8px; cursor: pointer; }
+  .picker .pk-go:hover { background: #1d4ed8; }
+  .picker .pk-go:disabled { opacity: .7; cursor: wait; }
+  .pk-out { background: #fff; color: #0f172a; border-radius: 14px; padding: 16px 18px; max-width: 720px; margin: 0 auto 12px; text-align: left; box-shadow: 0 10px 30px rgba(15, 23, 42, .25); }
+  .pk-head b { font-size: 1.15rem; }
+  .pk-extra { color: #475569; font-size: .92rem; margin-top: 2px; }
+  .pk-list { margin: 12px 0; display: grid; gap: 8px; }
+  .pk-job { display: block; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; text-decoration: none; color: inherit; }
+  .pk-job:hover { border-color: #2563eb; }
+  .pk-job b { display: block; color: #0f172a; }
+  .pk-job span { color: #475569; font-size: .88rem; }
+  .pk-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pk-btn { background: #2563eb; color: #fff; font-weight: 700; padding: 11px 18px; border-radius: 8px; text-decoration: none; }
+  .pk-btn.ghost { background: #fff; color: #1d4ed8; border: 1px solid #93c5fd; }
+  .pk-note { color: #64748b; font-size: .84rem; margin-top: 8px; }
+  .hero .cta { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 18px; }
+  .facts { max-width: 1040px; margin: 28px auto 8px; padding: 0 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+  .facts div { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px; text-align: center; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .facts b { display: block; font-size: 1.6rem; color: #1d4ed8; letter-spacing: -0.02em; }
+  .facts span { font-size: 0.88rem; color: #475569; }
+  .facts-note { text-align: center; color: #6b7280; font-size: 0.85rem; margin: 8px auto 24px; max-width: 640px; }
+  .assure { color: #e0ecff; font-size: .88rem; margin: 2px 0 14px; }
   .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 920px; margin: 28px auto; padding: 0 16px; }
   @media (max-width: 640px) { .compare { grid-template-columns: 1fr; } }
   .compare .card { padding: 20px; }
@@ -109,10 +123,67 @@
   <p class="sub">
     Search verified openings from company career pages, with hiring regions, visa sponsorship and pay made clear. Apply directly to the employer.
   </p>
+  <form class="picker" id="picker" method="get" action="/jobs">
+    <label class="pk"><span>I&rsquo;m looking for</span>
+      <input name="q" id="pk-title" placeholder="e.g. Backend Engineer" maxlength="60" autocomplete="off"></label>
+    <label class="pk"><span>I live in</span>
+      <select name="remote_from" id="pk-country">{% for code, name in picker_countries %}<option value="{{ code }}">{{ name }}</option>{% endfor %}</select></label>
+    <button type="submit" class="pk-go">Show my matches</button>
+  </form>
+  <div id="pk-out" class="pk-out" hidden aria-live="polite"></div>
+  <p class="assure">Free, no sign-up needed to look &middot; {{ REFUND_DAYS }}-day money-back promise on every plan</p>
   <div class="cta">
-    <a class="btn-primary" href="/jobs">Browse free preview</a>
-    <a class="btn-secondary" href="{% if memail %}/pricing{% else %}/member/signup?next=%2Fonboarding%3Fwelcome%3D1{% endif %}">See pricing</a>
+    <a class="btn-secondary" href="/jobs">Browse the free preview</a>
+    <a class="btn-secondary" href="/pricing">See pricing</a>
   </div>
+  <script>
+  (function () {
+    var form = document.getElementById('picker'), out = document.getElementById('pk-out');
+    if (!form || !window.fetch) return;
+    function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+    function link(href, cls, text) { var a = el('a', cls, text); a.href = href; return a; }
+    function plural(n, word) { return n.toLocaleString() + ' ' + word + (n === 1 ? '' : 's'); }
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var title = document.getElementById('pk-title').value.trim(), country = document.getElementById('pk-country').value;
+      var btn = form.querySelector('button'); btn.disabled = true; btn.textContent = 'Looking…';
+      fetch('/events', {method: 'POST', headers: {'Content-Type': 'application/json'}, keepalive: true, body: JSON.stringify({event: 'picker_used', detail: ''})}).catch(function () {});
+      fetch('/api/v1/teaser?title=' + encodeURIComponent(title) + '&country=' + encodeURIComponent(country))
+        .then(function (r) { if (!r.ok) throw new Error('x'); return r.json(); })
+        .then(function (d) {
+          out.textContent = '';
+          var place = d.country_name || 'anywhere';
+          var main = d.remote || d.local || d.visa;
+          var head = el('div', 'pk-head');
+          if (d.remote) head.appendChild(el('b', '', plural(d.remote, 'remote role') + (d.title ? ' for “' + d.title + '”' : '') + (d.country ? ' open to ' + place : '')));
+          else if (d.local) head.appendChild(el('b', '', plural(d.local, 'role') + (d.title ? ' for “' + d.title + '”' : '') + ' in ' + place));
+          else if (d.visa) head.appendChild(el('b', '', 'No remote roles for that search yet, but ' + plural(d.visa, 'role') + ' offer visa sponsorship'));
+          else head.appendChild(el('b', '', 'No matches for that exact search. Try a broader title.'));
+          out.appendChild(head);
+          var extra = [];
+          if (d.remote && d.local) extra.push(plural(d.local, 'role') + ' located in ' + place);
+          if (d.visa && main !== d.visa) extra.push(plural(d.visa, 'role') + ' offer visa sponsorship');
+          if (extra.length) out.appendChild(el('div', 'pk-extra', '+ ' + extra.join(' · ')));
+          var list = el('div', 'pk-list');
+          d.jobs.forEach(function (j) {
+            var row = link(j.url, 'pk-job');
+            row.appendChild(el('b', '', j.title));
+            row.appendChild(el('span', '', [j.company, j.location, j.pay, j.days <= 0 ? 'today' : j.days + 'd ago'].filter(Boolean).join(' · ')));
+            list.appendChild(row);
+          });
+          out.appendChild(list);
+          var actions = el('div', 'pk-actions');
+          actions.appendChild(link(d.see_all, 'pk-btn ghost', main ? 'See all ' + main.toLocaleString() : 'Browse all jobs'));
+          actions.appendChild(link(d.signup, 'pk-btn', 'Save this search & get alerts'));
+          out.appendChild(actions);
+          out.appendChild(el('div', 'pk-note', 'Free account, no card. We email you when new matches appear.'));
+          out.hidden = false;
+        })
+        .catch(function () { form.submit(); })
+        .then(function () { btn.disabled = false; btn.textContent = 'Show my matches'; });
+    });
+  })();
+  </script>
   {% if stats %}
   <div class="counter" aria-label="Live job counts">
     <span><b>{{ '{:,}'.format(stats.jobs) }}</b> open jobs</span>
@@ -170,30 +241,24 @@
   </div>
 </section>
 
-<div class="proof">
-  <div class="quote">
-    “Applying on the company site just makes more sense. Less noise than LinkedIn, real openings.”
-    <div class="who">— Early seeker feedback</div>
-  </div>
-  <div class="quote">
-    “I only want remote roles that hire internationally. One search beat scrolling three job boards.”
-    <div class="who">— Remote job hunter</div>
-  </div>
-  <div class="quote">
-    “Preview was enough to see the difference. Paid to unlock filters and keep searching.”
-    <div class="who">— Monthly subscriber</div>
-  </div>
-</div>
-<p class="proof-bar">Jobs from company career pages · Direct apply · Preview free, unlock when ready</p>
+{% if stats and stats.new_7d is defined %}
+<section class="facts" aria-label="What is on the board right now">
+  <div><b>{{ '{:,}'.format(stats.jobs) }}</b><span>open jobs, read straight from company career pages</span></div>
+  <div><b>{{ '{:,}'.format(stats.companies) }}</b><span>companies, checked {{ stats.updated or 'regularly' }}</span></div>
+  <div><b>{{ '{:,}'.format(stats.new_7d) }}</b><span>posted in the last 7 days</span></div>
+  <div><b>{{ stats.pay_pct }}%</b><span>state a pay range, shown in US dollars</span></div>
+</section>
+<p class="facts-note">Live numbers from our own database, not estimates.</p>
+{% endif %}
 
 <div class="compare">
   <div class="card bad">
     <h3>LinkedIn / Indeed</h3>
     <ul>
-      <li>Thousands of applicants on every post</li>
-      <li>Stale and evergreen listings</li>
-      <li>Recruiter spam and ghosting</li>
-      <li>Hard to see what companies actually posted</li>
+      <li>Popular posts can draw huge numbers of applicants</li>
+      <li>Listings can be stale, reposted or already filled</li>
+      <li>Your application goes through the board first</li>
+      <li>Pay and hiring region are often unclear</li>
     </ul>
   </div>
   <div class="card good">
@@ -209,7 +274,8 @@
 
 <div class="mid-cta">
   <a class="btn-primary" href="/jobs" style="display:inline-block;background:#2563eb;color:#fff;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none">Browse free preview</a>
-  <a href="{% if memail %}/pricing{% else %}/member/signup?next=%2Fonboarding%3Fwelcome%3D1{% endif %}" style="display:inline-block;margin-left:12px;color:#1d4ed8;font-weight:700;padding:14px 18px;text-decoration:none">See plans &amp; pricing &rarr;</a>
+  <a href="/pricing" style="display:inline-block;margin-left:12px;color:#1d4ed8;font-weight:700;padding:14px 18px;text-decoration:none">See plans &amp; pricing &rarr;</a>
+  <div class="muted" style="font-size:.88rem;margin-top:2px">Free preview, no card needed &middot; {{ REFUND_DAYS }}-day money-back promise on every plan</div>
 </div>
 
 
