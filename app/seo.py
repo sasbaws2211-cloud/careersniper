@@ -194,4 +194,20 @@ def job_sitemap_files(job_count: int) -> list[str]:
 
 
 # The pages with a fixed address that belong in the sitemap. Everything private is left out on purpose.
-STATIC_PAGES = ("/", "/jobs", "/pricing", "/companies", "/salaries", "/refunds")
+STATIC_PAGES = ("/", "/jobs", "/pricing", "/companies", "/salaries", "/refunds", "/blog", "/alternatives")
+
+
+def article_data(headline: str, description: str, path: str, published: str, updated: str) -> dict:
+    """Article structured data for a blog post or a comparison page. Dates are 'YYYY-MM-DD'."""
+    return {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": clip(headline, 110),
+        "description": clip(description, DESCRIPTION_LIMIT),
+        "mainEntityOfPage": {"@type": "WebPage", "@id": absolute(path)},
+        "datePublished": published,
+        "dateModified": updated,
+        "image": [absolute(DEFAULT_IMAGE)],
+        "author": {"@type": "Organization", "name": config.PLATFORM_NAME, "url": absolute("/")},
+        "publisher": {"@type": "Organization", "name": config.PLATFORM_NAME, "logo": {"@type": "ImageObject", "url": absolute("/static/logo.png")}},
+    }

@@ -1,0 +1,32 @@
+{% extends "_plain.html" %}
+{#- The blog and the comparison pages' listings. Context: kind ('blog' | 'alternative'), entries (list of Entry). -#}
+{% set _blog = kind == 'blog' %}
+{% set seo = {
+  'title': brand_title('Job Search Blog: Finding Real Openings' if _blog else 'Alternatives and Comparisons', PLATFORM),
+  'description': ('Short, practical guides to finding jobs on company career pages, reading postings and pay, and spotting stale listings.'
+                  if _blog else 'Fair comparisons of ' ~ PLATFORM ~ ' with other job search tools: what each does, what it costs, and who should pick which.'),
+  'canonical': '/blog' if _blog else '/alternatives',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Blog' if _blog else 'Alternatives', '/blog' if _blog else '/alternatives')])]
+} %}
+{% block body %}
+<div style="max-width:760px;margin:28px auto 40px;line-height:1.6">
+  <h1 style="margin:0 0 8px">{{ 'Job search blog' if _blog else 'Alternatives and comparisons' }}</h1>
+  <p class="muted" style="margin:0 0 24px">
+    {% if _blog %}Short, practical guides to finding jobs on company career pages, reading postings and pay, and spotting stale listings.
+    {% else %}How {{ PLATFORM }} compares with other job search tools, written fairly: where each one is the better choice, and what we could not confirm.{% endif %}
+  </p>
+  {% for e in entries %}
+  <div class="card" style="margin-bottom:14px">
+    <h2 style="font-size:1.2rem;margin:0 0 6px"><a href="{{ e.path }}" style="text-decoration:none">{{ e.title }}</a></h2>
+    <p style="margin:0 0 6px">{{ e.summary }}</p>
+    <p class="muted" style="margin:0;font-size:.88rem">
+      {% if not _blog %}Checked {% endif %}{{ e.updated.strftime('%d %B %Y').lstrip('0') }} &middot; {{ minutes[e.slug] }} min read
+    </p>
+  </div>
+  {% endfor %}
+  {% if not _blog %}
+  <p class="muted" style="font-size:.92rem">We make {{ PLATFORM }}, so we are not neutral. Each page says what we checked, and when. Something wrong? <a href="mailto:{{ SUPPORT_EMAIL }}">Tell us</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

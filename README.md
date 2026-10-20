@@ -78,6 +78,26 @@ Then add its path to `STATIC_PAGES` in `seo.py`, or to a sitemap in `main.py` if
 
 **Why there is no `JobPosting` structured data (and no "Google for Jobs"):** Google's job-posting rules do not allow postings that need payment to apply, and an aggregator may not alter titles or supply pay. Job pages here keep the apply link behind a plan, so adding that markup would put the site at risk of losing rich results or a manual action. A test (`test_no_job_posting_markup...`) stops it being added by accident. If you ever want job-search rich results, the apply link would need to work without payment first.
 
+## Blog and comparison pages
+
+`/blog` and `/alternatives` are written pages that bring in search traffic: short guides, and fair "CareerSniper vs X" comparisons. They are
+plain template files, not a database, so they are reviewed and versioned like code.
+
+**Add a page:** add an `Entry(...)` to `BLOG` or `ALTERNATIVES` in `app/content.py` (slug, title, a title of at most 45 characters for search results, a
+description of at most 155 characters, a summary for the listing, the dates), then write its body in
+`app/templates/content/<blog|alternative>/<slug>.html`. The listing page, the sitemap (`/sitemap-content.xml`), the title tags, the canonical address and
+the `Article` data all come from the record. Use `{{ CONSUMER_PLANS['monthly'].price_usd }}` and `{{ REFUND_DAYS }}` for our own prices and refund window so a page
+can never disagree with the pricing page.
+
+**Rules for a comparison page** (a test, `tests/test_content.py`, enforces what it can):
+- Say only what the other product says about itself on its own site, or what could be checked there, and give the date it was checked. Quote its own words.
+- Where something could not be confirmed (a price, a limit), say so in "What we could not confirm" instead of quoting a third party. This is why the Jobright and Simplify pages carry no price of theirs: their pricing pages could not be opened.
+- Be fair: spell out where the other product is the better choice. No reviews, no complaints, no claims about how a company treats its customers.
+- Do not claim features we do not have. We have no autofill, networking or recruiter introductions.
+- Re-check each comparison when prices or features change, and update its dates (`updated`, and the "Checked on" sentence in its description). Stale comparisons are worse than none.
+
+**Blog posts:** useful and original, with no invented statistics. A post that says a number must say where it came from.
+
 ## Config (env)
 
 `DATABASE_URL`, `REDIS_URL` (optional cache), `SECRET_KEY`, `PUBLIC_URL`, `PAYSTACK_SECRET_KEY` / `PAYSTACK_SECRET_KEY (webhook sig)` (billing), `ANTHROPIC_API_KEY` (AI tools), SMTP settings for email.

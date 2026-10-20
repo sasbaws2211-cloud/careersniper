@@ -1,0 +1,67 @@
+{% extends "_plain.html" %}
+{#- One layout for a blog post and a comparison page. Context: entry (content.Entry), minutes, related (list of Entry). -#}
+{% set _section = 'Blog' if entry.kind == 'blog' else 'Alternatives' %}
+{% set _section_path = '/blog' if entry.kind == 'blog' else '/alternatives' %}
+{% set seo = {
+  'title': brand_title(entry.seo_title, PLATFORM),
+  'description': clip(entry.description),
+  'canonical': entry.path,
+  'og_type': 'article',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [article_data(entry.title, entry.description, entry.path, entry.published.isoformat(), entry.updated.isoformat()),
+             breadcrumbs([(PLATFORM, '/'), (_section, _section_path), (entry.title, entry.path)])]
+} %}
+{% block body %}
+<style>
+  .article { max-width: 760px; margin: 28px auto 40px; line-height: 1.75; font-size: 1.04rem; }
+  .article h1 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.18; letter-spacing: -0.02em; margin: 6px 0 10px; }
+  .article h2 { font-size: 1.35rem; margin: 34px 0 8px; letter-spacing: -0.01em; }
+  .article h3 { font-size: 1.1rem; margin: 22px 0 4px; }
+  .article p, .article li { color: #1f2937; }
+  .article ul, .article ol { padding-left: 1.3em; }
+  .article li { margin: 4px 0; }
+  .article .meta { color: #6b7280; font-size: .9rem; margin-bottom: 18px; }
+  .article .lead { font-size: 1.15rem; color: #374151; }
+  .article .note { border-left: 4px solid #2563eb; background: #eff6ff; padding: 12px 16px; border-radius: 6px; margin: 18px 0; }
+  .article .disclosure { border: 1px solid #e5e7eb; background: #f9fafb; padding: 12px 16px; border-radius: 6px; font-size: .92rem; color: #4b5563; margin: 16px 0 22px; }
+  .article table.cmp { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: .96rem; line-height: 1.5; }
+  .article table.cmp th, .article table.cmp td { border: 1px solid #e5e7eb; padding: 10px 12px; text-align: left; vertical-align: top; }
+  .article table.cmp thead th { background: #f3f4f6; }
+  .article table.cmp tbody th { background: #fafafa; width: 24%; font-weight: 600; }
+  .article .cta { border: 1px solid #bfdbfe; background: #eff6ff; padding: 18px 20px; border-radius: 10px; margin: 34px 0 10px; }
+  .article .cta p { margin: 0 0 12px; }
+  .article .more { margin-top: 30px; }
+  .article .more a { text-decoration: none; }
+  @media (max-width: 640px) { .article table.cmp { display: block; overflow-x: auto; } }
+</style>
+<article class="article">
+  <p class="meta"><a href="{{ _section_path }}">{{ _section }}</a></p>
+  <h1>{{ entry.title }}</h1>
+  <p class="meta">
+    {% if entry.kind == 'alternative' %}Checked on {% else %}Published {% endif %}<time datetime="{{ entry.published.isoformat() }}">{{ entry.published.strftime('%d %B %Y').lstrip('0') }}</time>
+    {% if entry.updated != entry.published %} &middot; Updated <time datetime="{{ entry.updated.isoformat() }}">{{ entry.updated.strftime('%d %B %Y').lstrip('0') }}</time>{% endif %}
+    &middot; {{ minutes }} min read
+  </p>
+  {% if entry.kind == 'alternative' %}
+  <p class="disclosure"><b>Who wrote this.</b> We make {{ PLATFORM }}, so we are not neutral. We looked at {{ entry.competitor }}'s own site on
+    {{ entry.updated.strftime('%d %B %Y').lstrip('0') }} and only state what it says there. Where we could not confirm something, we say so instead of guessing.
+    Prices and features change: if anything here is out of date, write to <a href="mailto:{{ SUPPORT_EMAIL }}">{{ SUPPORT_EMAIL }}</a> and we will correct it.</p>
+  {% endif %}
+
+  {% include entry.template %}
+
+  <div class="cta">
+    <p><b>Search jobs taken straight from company career pages.</b> Preview them free, then pick a plan only if it helps.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> &nbsp; <a href="/pricing">See plans</a>
+  </div>
+
+  {% if related %}
+  <div class="more">
+    <h2>{{ 'Keep reading' if entry.kind == 'blog' else 'More comparisons' }}</h2>
+    <ul>
+      {% for r in related %}<li><a href="{{ r.path }}">{{ r.title }}</a></li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</article>
+{% endblock %}

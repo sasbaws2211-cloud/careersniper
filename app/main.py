@@ -35,6 +35,7 @@ from admin.main import app as platform_admin_app
 from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail
 from . import search as search_mod
 from . import seo as seo_mod
+from . import content as content_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
 from . import classify as classify_mod
@@ -60,7 +61,7 @@ templates.env.globals.update(PLATFORM=config.PLATFORM_NAME, PLANS=config.PLANS, 
 # Search and social metadata (see seo.py): the page templates build their <head> from these.
 templates.env.globals.update(abs_url=seo_mod.absolute, clip=seo_mod.clip, brand_title=seo_mod.brand_title, breadcrumbs=seo_mod.breadcrumbs,
                              website_data=seo_mod.website_data, job_description=seo_mod.job_description, job_indexable=seo_mod.job_indexable,
-                             job_where=seo_mod.job_where, job_title=seo_mod.job_title, DEFAULT_OG_IMAGE=seo_mod.DEFAULT_IMAGE, DEFAULT_OG_IMAGE_ALT=seo_mod.DEFAULT_IMAGE_ALT,
+                             job_where=seo_mod.job_where, job_title=seo_mod.job_title, article_data=seo_mod.article_data, DEFAULT_OG_IMAGE=seo_mod.DEFAULT_IMAGE, DEFAULT_OG_IMAGE_ALT=seo_mod.DEFAULT_IMAGE_ALT,
                              OG_IMAGE_SIZE=seo_mod.IMAGE_SIZE)
 templates.env.filters["jsonld"] = seo_mod.jsonld
 RESERVED = {"www", "app", "admin", "api", "static", "login", "signup", "mail"}
@@ -461,6 +462,37 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     return templates.TemplateResponse(request, "marketing.html", {"stats": (await site_stats(db)), "picker_countries": PICKER_COUNTRIES})
 
 
+# ---------------------------------------------------------------- blog and comparison pages (content.py)
+def _minutes(kind: str) -> dict[str, int]:
+    return {e.slug: content_mod.reading_minutes(kind, e.slug) for e in content_mod.entries(kind)}
+
+
+@app.get("/blog", response_class=HTMLResponse)
+def blog_index(request: Request):
+    return templates.TemplateResponse(request, "content_index.html", {"kind": "blog", "entries": content_mod.entries("blog"), "minutes": _minutes("blog")})
+
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
+def blog_post(slug: str, request: Request):
+    entry = content_mod.get("blog", slug)
+    if entry is None:
+        raise HTTPException(404, "Post not found")
+    return templates.TemplateResponse(request, "article.html", {"entry": entry, "minutes": content_mod.reading_minutes("blog", slug), "related": content_mod.related(entry)})
+
+
+@app.get("/alternatives", response_class=HTMLResponse)
+def alternatives_index(request: Request):
+    return templates.TemplateResponse(request, "content_index.html", {"kind": "alternative", "entries": content_mod.entries("alternative"), "minutes": _minutes("alternative")})
+
+
+@app.get("/alternatives/{slug}", response_class=HTMLResponse)
+def alternative_page(slug: str, request: Request):
+    entry = content_mod.get("alternative", slug)
+    if entry is None:
+        raise HTTPException(404, "Page not found")
+    return templates.TemplateResponse(request, "article.html", {"entry": entry, "minutes": content_mod.reading_minutes("alternative", slug), "related": content_mod.related(entry)})
+
+
 # ---------------------------------------------------------------- robots.txt and sitemaps
 SITEMAP_TTL = 3600   # seconds: a crawler reads these a few times a day, so never build one on every request
 _sitemap_cache: dict[str, tuple[float, str]] = {}
@@ -497,7 +529,7 @@ def robots_txt():
 async def sitemap_index(db: AsyncSession = Depends(get_db)):
     async def build() -> str:
         jobs = (await db.scalar(select(func.count()).select_from(_indexable_jobs().subquery()))) or 0
-        return seo_mod.sitemap_index(["/sitemap-pages.xml", "/sitemap-companies.xml", "/sitemap-salaries.xml", *seo_mod.job_sitemap_files(jobs)])
+        return seo_mod.sitemap_index(["/sitemap-pages.xml", "/sitemap-content.xml", "/sitemap-companies.xml", "/sitemap-salaries.xml", *seo_mod.job_sitemap_files(jobs)])
     return Response(await _cached_sitemap("index", build), media_type=XML, headers=CACHEABLE)
 
 
@@ -508,6 +540,13 @@ async def sitemap_pages():
 
 async def _static(text: str) -> str:
     return text
+
+
+@app.get("/sitemap-content.xml")
+async def sitemap_content():
+    async def build() -> str:
+        return seo_mod.urlset([(e.path, e.updated.isoformat()) for kind in ("blog", "alternative") for e in content_mod.entries(kind)])
+    return Response(await _cached_sitemap("content", build), media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/sitemap-companies.xml")
