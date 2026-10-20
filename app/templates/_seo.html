@@ -1,0 +1,36 @@
+{#- Search and social metadata for the <head>. A page opts in by setting `seo` (a dict) at the top of its template; a page that
+    sets nothing gets `noindex,nofollow`, so a private page can never reach search by being forgotten. Keys:
+      title, description, canonical (a path or address), robots, og_type, image, jsonld (a list of structured-data dicts) -#}
+{%- set s = seo if seo is defined and seo else {} -%}
+<meta name="robots" content="{{ s.get('robots') or 'noindex,nofollow' }}">
+{%- if s.get('description') %}
+<meta name="description" content="{{ s.description }}">
+{%- endif %}
+{%- if s.get('canonical') %}
+<link rel="canonical" href="{{ abs_url(s.canonical) }}">
+{%- endif %}
+{%- if s.get('title') %}
+<meta property="og:site_name" content="{{ PLATFORM }}">
+<meta property="og:type" content="{{ s.get('og_type') or 'website' }}">
+<meta property="og:title" content="{{ s.title }}">
+{%- if s.get('description') %}
+<meta property="og:description" content="{{ s.description }}">
+{%- endif %}
+{%- if s.get('canonical') %}
+<meta property="og:url" content="{{ abs_url(s.canonical) }}">
+{%- endif %}
+<meta property="og:image" content="{{ abs_url(s.get('image') or DEFAULT_OG_IMAGE) }}">
+<meta property="og:image:width" content="{{ OG_IMAGE_SIZE[0] }}">
+<meta property="og:image:height" content="{{ OG_IMAGE_SIZE[1] }}">
+<meta property="og:image:alt" content="{{ DEFAULT_OG_IMAGE_ALT }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ s.title }}">
+{%- if s.get('description') %}
+<meta name="twitter:description" content="{{ s.description }}">
+{%- endif %}
+<meta name="twitter:image" content="{{ abs_url(s.get('image') or DEFAULT_OG_IMAGE) }}">
+{%- endif %}
+<meta name="theme-color" content="#2563eb">
+{%- for item in s.get('jsonld', []) %}
+<script type="application/ld+json">{{ item|jsonld }}</script>
+{%- endfor %}

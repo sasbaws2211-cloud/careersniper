@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}{{ PLATFORM }}{% endblock %}</title>
+<title>{% block title %}{{ seo.title if seo is defined and seo and seo.get('title') else PLATFORM }}{% endblock %}</title>
+{% include "_seo.html" %}
 <link rel="stylesheet" href="/static/app.css?v={{ CSS_V }}">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/static/favicon.ico" sizes="any">

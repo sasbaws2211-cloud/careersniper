@@ -1,5 +1,12 @@
 {% extends "_tenant.html" %}
-{% block title %}{{ job.title }} · {{ job.company.name }}{% endblock %}
+{% set seo = {
+  'title': job_title(job, PLATFORM),
+  'description': job_description(job),
+  'canonical': '/jobs/' ~ job.id,
+  'og_type': 'article',
+  'robots': 'index,follow,max-image-preview:large' if job_indexable(job) else 'noindex,follow',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Jobs', '/jobs'), (job.company.name, company_path), (job.title, '/jobs/' ~ job.id)])]
+} %}
 {% block body %}
 {% set ats = (job.source or job.company.ats or '')|lower %}
 {% set initial = (job.company.name[:1] if job.company.name else '?')|upper %}

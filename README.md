@@ -43,6 +43,41 @@ Moving data from the old SQLite file: `python -m app.cli migrate
 - Consumer plans: weekly / monthly / lifetime.
 - Employer direct-posting and org admin remain in the codebase as secondary / legacy paths; the primary product is the B2C job seeker experience.
 
+## SEO
+
+Search and social metadata is built in one place, `app/seo.py`, and rendered by one partial, `app/templates/_seo.html`, that both base
+templates include.
+
+**What every public page gets:** a title of at most 60 characters ending in the brand, a description of at most 155 characters taken from the
+page itself, one canonical address (no query strings, so `?unlocked=1` never makes a copy), Open Graph and Twitter tags with a 1200x630
+image (`app/static/og-default.png`), and breadcrumb structured data. The homepage also has `WebSite` and `Organization` data.
+
+**What is kept out of search:**
+- A page with no `seo` settings is `noindex,nofollow`, so a private page can never reach search by being forgotten. `robots.txt` also tells crawlers to stay away from signed-in pages, `/go/`, `/api/` and the member tools.
+- The job list with any filter, sort or page (`/jobs?...`) is `noindex,follow` and points to `/jobs`. Same for a searched or paged company or salary list.
+- A job whose description is too short to be useful (under 150 characters of text) is `noindex,follow` and is left out of the sitemap. A company with no open jobs is `noindex,follow`.
+- An expired or removed job is a 404, so it drops out of search by itself.
+
+**Sitemaps:** `/sitemap.xml` is an index of `/sitemap-pages.xml`, `/sitemap-companies.xml`, `/sitemap-salaries.xml` and `/sitemap-jobs-1.xml`, `-2.xml`... (40,000 jobs per file). Each is built at most once an hour (in this process, shared through Redis when it is there). `robots.txt` points to the index. Submit `https://<your domain>/sitemap.xml` once in Google Search Console and Bing Webmaster Tools.
+
+**Set `PUBLIC_URL`** to the real `https://` address of the site: every canonical, sitemap and social-image address is built from it.
+
+**Adding a public page:** at the top of its template, after `{% extends %}`, set `seo` and drop any `{% block title %}`:
+
+```jinja
+{% set seo = {
+  'title': brand_title('Page title in about 50 characters', PLATFORM),
+  'description': clip('One or two sentences taken from the page itself.'),
+  'canonical': '/the-page',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('The page', '/the-page')])]
+} %}
+```
+
+Then add its path to `STATIC_PAGES` in `seo.py`, or to a sitemap in `main.py` if it is one of many.
+
+**Why there is no `JobPosting` structured data (and no "Google for Jobs"):** Google's job-posting rules do not allow postings that need payment to apply, and an aggregator may not alter titles or supply pay. Job pages here keep the apply link behind a plan, so adding that markup would put the site at risk of losing rich results or a manual action. A test (`test_no_job_posting_markup...`) stops it being added by accident. If you ever want job-search rich results, the apply link would need to work without payment first.
+
 ## Config (env)
 
 `DATABASE_URL`, `REDIS_URL` (optional cache), `SECRET_KEY`, `PUBLIC_URL`, `PAYSTACK_SECRET_KEY` / `PAYSTACK_SECRET_KEY (webhook sig)` (billing), `ANTHROPIC_API_KEY` (AI tools), SMTP settings for email.

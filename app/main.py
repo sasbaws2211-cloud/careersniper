@@ -34,6 +34,7 @@ from admin.main import app as platform_admin_app
 
 from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail
 from . import search as search_mod
+from . import seo as seo_mod
 from .db import SessionLocal, current_engine, engine, get_db, use_private_engine
 from .models import (AiUsage, BillingCheckout, ClickEvent, Company, Job, JobRequirement, Member, MemberProfile, Org, Resume, SavedJob, Subscriber, User)
 from . import classify as classify_mod
@@ -56,6 +57,12 @@ templates.env.globals["progress"] = lambda s: interview.progress(s)
 templates.env.globals["CSS_V"] = int((BASE / "static" / "app.css").stat().st_mtime)    # a changed stylesheet gets a new address, so browsers never keep an old copy
 templates.env.globals.update(PLATFORM=config.PLATFORM_NAME, PLANS=config.PLANS, CONSUMER_PLANS=config.CONSUMER_PLANS,
                              REFUND_DAYS=config.REFUND_DAYS, SUPPORT_EMAIL=config.SUPPORT_EMAIL)
+# Search and social metadata (see seo.py): the page templates build their <head> from these.
+templates.env.globals.update(abs_url=seo_mod.absolute, clip=seo_mod.clip, brand_title=seo_mod.brand_title, breadcrumbs=seo_mod.breadcrumbs,
+                             website_data=seo_mod.website_data, job_description=seo_mod.job_description, job_indexable=seo_mod.job_indexable,
+                             job_where=seo_mod.job_where, job_title=seo_mod.job_title, DEFAULT_OG_IMAGE=seo_mod.DEFAULT_IMAGE, DEFAULT_OG_IMAGE_ALT=seo_mod.DEFAULT_IMAGE_ALT,
+                             OG_IMAGE_SIZE=seo_mod.IMAGE_SIZE)
+templates.env.filters["jsonld"] = seo_mod.jsonld
 RESERVED = {"www", "app", "admin", "api", "static", "login", "signup", "mail"}
 PAGE = 20
 
@@ -452,6 +459,86 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
     """Marketing homepage."""
     await funnel.record(db, request, "landing_view", once=True)
     return templates.TemplateResponse(request, "marketing.html", {"stats": (await site_stats(db)), "picker_countries": PICKER_COUNTRIES})
+
+
+# ---------------------------------------------------------------- robots.txt and sitemaps
+SITEMAP_TTL = 3600   # seconds: a crawler reads these a few times a day, so never build one on every request
+_sitemap_cache: dict[str, tuple[float, str]] = {}
+XML = "application/xml; charset=utf-8"
+CACHEABLE = {"Cache-Control": "public, max-age=3600"}
+
+
+async def _cached_sitemap(key: str, build) -> str:
+    """A sitemap's text: in this process for an hour, and shared through Redis when it is there."""
+    hit = _sitemap_cache.get(key)
+    if hit and time.time() - hit[0] < SITEMAP_TTL:
+        return hit[1]
+    shared = await cache_mod.get_json(f"public:sitemap:{key}:v1")
+    if isinstance(shared, str) and shared.startswith("<?xml"):
+        _sitemap_cache[key] = (time.time(), shared)
+        return shared
+    text = await build()
+    _sitemap_cache[key] = (time.time(), text)
+    await cache_mod.set_json(f"public:sitemap:{key}:v1", text, SITEMAP_TTL)
+    return text
+
+
+def _indexable_jobs():
+    """The jobs that get a page worth showing to a search engine (the same rule as the page's own robots setting, with room for markup)."""
+    return feed_query().where(func.length(Job.description) >= seo_mod.SITEMAP_MIN_HTML_LENGTH)
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots_txt():
+    return PlainTextResponse(seo_mod.robots_txt(), headers=CACHEABLE)
+
+
+@app.get("/sitemap.xml")
+async def sitemap_index(db: AsyncSession = Depends(get_db)):
+    async def build() -> str:
+        jobs = (await db.scalar(select(func.count()).select_from(_indexable_jobs().subquery()))) or 0
+        return seo_mod.sitemap_index(["/sitemap-pages.xml", "/sitemap-companies.xml", "/sitemap-salaries.xml", *seo_mod.job_sitemap_files(jobs)])
+    return Response(await _cached_sitemap("index", build), media_type=XML, headers=CACHEABLE)
+
+
+@app.get("/sitemap-pages.xml")
+async def sitemap_pages():
+    return Response(await _cached_sitemap("pages", lambda: _static(seo_mod.urlset([(path, None) for path in seo_mod.STATIC_PAGES]))), media_type=XML, headers=CACHEABLE)
+
+
+async def _static(text: str) -> str:
+    return text
+
+
+@app.get("/sitemap-companies.xml")
+async def sitemap_companies(db: AsyncSession = Depends(get_db)):
+    async def build() -> str:
+        rows = await companies._directory_rows(db)   # only companies with open jobs, already cached
+        return seo_mod.urlset([(f"/companies/{r['id']}-{r['slug']}", None) for r in rows])
+    return Response(await _cached_sitemap("companies", build), media_type=XML, headers=CACHEABLE)
+
+
+@app.get("/sitemap-salaries.xml")
+async def sitemap_salaries(db: AsyncSession = Depends(get_db)):
+    async def build() -> str:
+        return seo_mod.urlset([(f"/salaries/{g['slug']}", None) for g in await salaries.index(db)])
+    return Response(await _cached_sitemap("salaries", build), media_type=XML, headers=CACHEABLE)
+
+
+@app.get("/sitemap-jobs-{n}.xml")
+async def sitemap_jobs(n: int, db: AsyncSession = Depends(get_db)):
+    if n < 1 or n > 1000:
+        raise HTTPException(404, "No such sitemap")
+
+    async def build() -> str:
+        rows = (await db.execute(
+            _indexable_jobs().with_only_columns(Job.id, func.coalesce(Job.last_seen, Job.first_seen))
+            .order_by(Job.id).offset((n - 1) * seo_mod.SITEMAP_PAGE_SIZE).limit(seo_mod.SITEMAP_PAGE_SIZE))).all()
+        return seo_mod.urlset([(f"/jobs/{jid}", seen) for jid, seen in rows])
+    text = await _cached_sitemap(f"jobs-{n}", build)
+    if n > 1 and "<url>" not in text:
+        raise HTTPException(404, "No such sitemap")      # past the last page: not an empty file crawlers keep asking for
+    return Response(text, media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/refunds", response_class=HTMLResponse)

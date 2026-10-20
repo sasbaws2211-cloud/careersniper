@@ -1,5 +1,13 @@
 {% extends "_plain.html" %}
-{% block title %}{{ PLATFORM }} — Jobs from company career pages{% endblock %}
+{% set _from = CONSUMER_PLANS.values()|map(attribute='price_usd')|min %}
+{% set _about = ('Search ' ~ '{:,}'.format(stats.jobs) ~ ' open jobs from ' ~ '{:,}'.format(stats.companies) ~ (' company career page' if stats.companies == 1 else ' company career pages') ~ ', many not on LinkedIn or Indeed.') if stats else 'Search jobs posted on company career pages, many not on LinkedIn or Indeed.' %}
+{% set seo = {
+  'title': brand_title('Find Jobs Not on LinkedIn or Indeed', PLATFORM),
+  'description': clip(_about ~ ' Free preview, full access from $' ~ _from ~ '.'),
+  'canonical': '/',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': website_data(_about)
+} %}
 {% block body %}
 <style>
   .wrap { max-width: 1120px; }

@@ -1,5 +1,10 @@
 {% extends "_plain.html" %}
-{% block title %}{{ REFUND_DAYS }}-day money-back promise · {{ PLATFORM }}{% endblock %}
+{% set seo = {
+  'title': brand_title(REFUND_DAYS ~ '-Day Money-Back Promise', PLATFORM),
+  'description': clip('If ' ~ PLATFORM ~ ' is not useful, you get your money back. How refunds work on every plan, and how long they take.'),
+  'canonical': '/refunds',
+  'robots': 'index,follow,max-image-preview:large'
+} %}
 {% block body %}
 <div style="max-width:680px;margin:40px auto;line-height:1.6">
   <h1>{{ REFUND_DAYS }}-day money-back promise</h1>

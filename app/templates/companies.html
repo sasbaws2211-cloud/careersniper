@@ -1,6 +1,11 @@
 {% extends "_tenant.html" %}
-{% block title %}Companies hiring now · {{ PLATFORM }}{% endblock %}
-{% block head %}<meta name="description" content="Companies with open roles on their own career pages, how many jobs each has open and how fast they hire.">{% endblock %}
+{% set seo = {
+  'title': brand_title('Companies Hiring Now and How Fast They Hire', PLATFORM),
+  'description': 'Companies with open roles on their own career pages, how many jobs each has open and how fast they hire.',
+  'canonical': '/companies',
+  'robots': 'noindex,follow' if request.query_params|length > 0 else 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Companies', '/companies')])]
+} %}
 {% block body %}
 <div class="hero"><h1>Companies hiring now</h1>
   <div class="muted">{{ '{:,}'.format(total) }} compan{{ 'y' if total == 1 else 'ies' }}{% if q %} matching &ldquo;{{ q }}&rdquo;{% endif %} with open roles</div></div>

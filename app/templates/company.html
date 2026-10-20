@@ -1,7 +1,11 @@
 {% extends "_tenant.html" %}
-{% block title %}{{ company.name }} jobs · {{ st.open }} open roles · {{ PLATFORM }}{% endblock %}
-{% block head %}<meta name="description" content="{{ company.name }} has {{ st.open }} open role{{ '' if st.open == 1 else 's' }} on its own career page{% if st.pace_days is not none %}; jobs there typically stay open about {{ st.pace_days }} days{% endif %}.">
-<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% set seo = {
+  'title': brand_title(company.name ~ ' Jobs: ' ~ st.open ~ ' Open Role' ~ ('' if st.open == 1 else 's'), PLATFORM),
+  'description': clip(company.name ~ ' has ' ~ st.open ~ ' open role' ~ ('' if st.open == 1 else 's') ~ ' on its own career page' ~ ('; jobs there typically stay open about ' ~ st.pace_days ~ ' days' if st.pace_days is not none else '') ~ '. See each role\'s location and pay, taken from the company\'s own page.'),
+  'canonical': canonical_url,
+  'robots': 'noindex,follow' if (request.query_params|length > 0 or not st.open) else 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Companies', '/companies'), (company.name, canonical_url)])]
+} %}
 {% block body %}
 <style>
   .stats4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }

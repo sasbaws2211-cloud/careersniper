@@ -1,7 +1,11 @@
 {% extends "_tenant.html" %}
-{% block title %}{{ g.name }} salary: ${{ '{:,.0f}'.format(g.median) }} a year (median) · {{ PLATFORM }}{% endblock %}
-{% block head %}<meta name="description" content="What a {{ g.name }} is paid, from {{ g.n }} pay ranges that {{ g.companies }} employers published: typically ${{ '{:,.0f}'.format(g.p25) }} to ${{ '{:,.0f}'.format(g.p75) }} a year.">
-<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% set seo = {
+  'title': brand_title(g.name ~ ' Salary: $' ~ '{:,.0f}'.format(g.median) ~ ' a Year (Median)', PLATFORM),
+  'description': clip('What a ' ~ g.name ~ ' is paid, from ' ~ g.n ~ ' pay ranges that ' ~ g.companies ~ ' employers published: typically $' ~ '{:,.0f}'.format(g.p25) ~ ' to $' ~ '{:,.0f}'.format(g.p75) ~ ' a year.'),
+  'canonical': canonical_url,
+  'robots': 'noindex,follow' if request.query_params|length > 0 else 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Salaries', '/salaries'), (g.name, canonical_url)])]
+} %}
 {% block body %}
 <style>
   .range { position: relative; height: 14px; background: var(--line); border-radius: 99px; margin: 14px 0 6px; }

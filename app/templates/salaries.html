@@ -1,6 +1,11 @@
 {% extends "_tenant.html" %}
-{% block title %}What do jobs pay? Salaries from real postings · {{ PLATFORM }}{% endblock %}
-{% block head %}<meta name="description" content="What employers say jobs pay, taken from the pay ranges on their own career pages and shown in US dollars a year.">{% endblock %}
+{% set seo = {
+  'title': brand_title('What Do Jobs Pay? Salaries From Real Postings', PLATFORM),
+  'description': 'What employers say jobs pay, taken from the pay ranges on their own career pages and shown in US dollars a year.',
+  'canonical': '/salaries',
+  'robots': 'noindex,follow' if request.query_params|length > 0 else 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Salaries', '/salaries')])]
+} %}
 {% block body %}
 <div class="hero"><h1>What do jobs pay?</h1>
   <div class="muted">Pay ranges that employers published for jobs open now, in approximate US dollars a year</div></div>

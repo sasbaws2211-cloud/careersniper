@@ -1,5 +1,12 @@
 {% extends "_tenant.html" %}
-{% block title %}Jobs · {{ PLATFORM }}{% endblock %}
+{% set _copy = request.query_params|length > 0 %}
+{% set seo = {
+  'title': brand_title('Browse Jobs From Company Career Pages', PLATFORM),
+  'description': clip(('Browse ' ~ '{:,}'.format(total) ~ ' open jobs' if total and not _copy else 'Browse open jobs') ~ ' posted on company career pages, many not on LinkedIn or Indeed. Filter by country, pay and level.'),
+  'canonical': '/jobs',
+  'robots': 'noindex,follow' if _copy else 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Jobs', '/jobs')])]
+} %}
 {% block body %}
 <style>
   @media (max-width: 640px) {
