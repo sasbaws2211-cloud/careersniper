@@ -520,6 +520,16 @@ def _indexable_jobs():
     return feed_query().where(func.length(Job.description) >= seo_mod.SITEMAP_MIN_HTML_LENGTH)
 
 
+# Google Search Console ownership check: it fetches this exact address and looks for this exact text. Leave it in place, or the property
+# loses its verified status.
+GOOGLE_VERIFICATION_FILE = "googlea90127fae7ed02bd.html"
+
+
+@app.get(f"/{GOOGLE_VERIFICATION_FILE}", response_class=PlainTextResponse)
+def google_site_verification():
+    return PlainTextResponse(f"google-site-verification: {GOOGLE_VERIFICATION_FILE}", headers=CACHEABLE)
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def robots_txt():
     return PlainTextResponse(seo_mod.robots_txt(), headers=CACHEABLE)
