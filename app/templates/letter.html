@@ -20,12 +20,13 @@
   @media (max-width:640px){.sheetwrap{padding:8px}.doc,.doc.letter{padding:22px 18px;font-size:10pt}.doc .name{font-size:18pt}}
   details.edit>summary{cursor:pointer;font-weight:600}
 </style>
+{% include "_template_picker.html" %}
 <div class="sheetwrap">{{ preview }}</div>
 
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-  <a class="btn" href="/letters/{{ doc.id }}/pdf">Download PDF</a>
-  <a class="btn ghost" href="/letters/{{ doc.id }}/download" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
-  <a class="btn ghost" href="/letters/{{ doc.id }}/print" target="_blank" style="background:transparent;color:inherit;border:1px solid #94a3b8">Print</a>
+  <a class="btn" href="/letters/{{ doc.id }}/pdf?template={{ tpl }}">Download PDF</a>
+  <a class="btn ghost" href="/letters/{{ doc.id }}/download?template={{ tpl }}" style="background:transparent;color:inherit;border:1px solid #94a3b8">Download .txt</a>
+  <a class="btn ghost" href="/letters/{{ doc.id }}/print?template={{ tpl }}" target="_blank" style="background:transparent;color:inherit;border:1px solid #94a3b8">Print</a>
   <button type="button" class="ghost" onclick="navigator.clipboard.writeText(document.getElementById('content').value).then(()=>{this.textContent='Copied'})">Copy text</button>
 </div>
 

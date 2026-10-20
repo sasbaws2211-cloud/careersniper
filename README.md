@@ -141,6 +141,7 @@ Access control: `_member_has_access` uses `billing.has_active_access(email)` whe
 | `POST /resume/profile/edit` | The member can correct the job titles and level that were read. |
 | `POST /jobs/{id}/tailor` | Full résumé rewrite for one job: the posting is analysed first (cached per job, free), the writer must quote proof for each requirement, then the rewrite is fact-checked against the original and corrected. Unprovable claims become `[ADD: ...]` prompts or gaps. |
 | `POST /jobs/{id}/coach` | Résumé coach for one job: what the résumé shows, what is missing, specific edits (claim-adding edits are marked "only if true"). Uses AI tokens the first time and is remembered per résumé until the text changes. Tailor résumé stays as the optional "apply these edits" step. |
+| `?template=classic\|modern\|compact` | Layout for a tailored résumé or cover letter, on `/tailored/{id}` and `/letters/{id}` and their `/pdf`, `/download` (.txt) and `/print` routes. Exactly three, all one column and ATS-friendly; a résumé and a letter in the same template match. The last pick is remembered in the `cs_template` cookie (no migration); an unknown name falls back to Classic. Layouts live in `app/docfmt.py` (`TEMPLATES`). Words never change, only layout. |
 
 ### Data quality
 

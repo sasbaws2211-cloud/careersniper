@@ -1,0 +1,10 @@
+<div class="card" style="padding:12px 14px;margin-bottom:12px" id="template-picker">
+  <b style="font-size:0.95rem">Layout</b>
+  <span class="muted" style="font-size:0.88rem">&mdash; applies to the preview and to every download.</span>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    {% for key, label, blurb in tpls %}
+    <a href="?template={{ key }}" class="btn{{ '' if key == tpl else ' ghost' }}" data-template="{{ key }}"{% if key == tpl %} aria-current="true"{% else %} style="background:transparent;color:inherit;border:1px solid #94a3b8"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+  {% for key, label, blurb in tpls %}{% if key == tpl %}<div class="muted" style="font-size:0.88rem;margin-top:8px">{{ blurb }}</div>{% endif %}{% endfor %}
+</div>

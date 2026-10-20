@@ -20,6 +20,24 @@ from html import escape
 
 from markupsafe import Markup
 
+# ------------------------------------------------------------------ the templates
+# Exactly three looks, shared by a résumé and a cover letter so the pair reads as one package. All are one column with no tables,
+# icons or photos, which is what applicant-tracking systems read best. A template changes layout, never words.
+TEMPLATES: tuple[tuple[str, str, str], ...] = (
+    ("classic", "Classic", "Centred name, ruled section headings, sans-serif. The safe choice for most jobs."),
+    ("modern", "Modern", "Left-aligned name and coloured headings. Suits tech, product and design roles."),
+    ("compact", "Compact", "Serif type, tighter spacing. Fits a long career on fewer pages; suits formal fields."),
+)
+DEFAULT_TEMPLATE = "classic"
+COOKIE = "cs_template"
+
+
+def template_name(name: str | None) -> str:
+    """A valid template name: the one given, or Classic when it is empty or unknown."""
+    n = (name or "").strip().lower()
+    return n if any(n == t[0] for t in TEMPLATES) else DEFAULT_TEMPLATE
+
+
 # ------------------------------------------------------------------ reading the text
 _MONTH = r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?"
 _POINT = rf"(?:{_MONTH}\s+)?(?:19|20)\d{{2}}|present|current|now|ongoing|to date"
@@ -270,6 +288,21 @@ DOC_CSS = """
 .doc.letter p{margin:0 0 12px}
 .doc.letter .lines{margin:0 0 12px}
 .doc.letter .rule{border:0;border-top:1px solid #6b7280;margin:6px 0 22px}
+.doc.t-modern .name{text-align:left;color:#1e3a8a}
+.doc.t-modern .contact{text-align:left}
+.doc.t-modern h2{color:#1e3a8a;border-bottom:0;letter-spacing:.12em;margin:18px 0 6px;padding-bottom:0}
+.doc.t-modern .org{font-style:normal;color:#444}
+.doc.t-modern.letter .rule{border-top:2px solid #1e3a8a}
+.doc.t-compact{font-family:Georgia,"Times New Roman",Times,"Liberation Serif",serif;font-size:9.8pt;line-height:1.35;padding:.55in .65in}
+.doc.t-compact .name{font-size:18pt}
+.doc.t-compact .contact{font-size:9pt;margin:0 0 8px;color:#333}
+.doc.t-compact h2{font-size:9.4pt;margin:11px 0 5px;border-bottom:1px solid #111}
+.doc.t-compact .entry{margin:0 0 6px}
+.doc.t-compact li{margin:0 0 1px}
+.doc.t-compact p{margin:0 0 5px}
+.doc.t-compact.letter{font-size:10.5pt;line-height:1.5;padding:.8in .9in}
+.doc.t-compact.letter p{margin:0 0 9px}
+.doc.t-compact.letter .rule{border-top:1px solid #111}
 @page{size:A4;margin:0}
 @media print{.doc{padding:.75in .8in;max-width:none}.doc.letter{padding:1in}}
 """
@@ -289,9 +322,9 @@ def _contact_html(items: list[str]) -> str:
     return "".join("<div>" + '<span class="sep">|</span>'.join(f"<span>{_link(i)}</span>" for i in ln) + "</div>" for ln in lines)
 
 
-def resume_html(text: str) -> Markup:
+def resume_html(text: str, template: str = DEFAULT_TEMPLATE) -> Markup:
     r = parse_resume(text)
-    h = ['<article class="doc resume">']
+    h = [f'<article class="doc resume t-{template_name(template)}">']
     if r.name:
         h.append(f'<div class="name">{escape(r.name)}</div>')
     if r.contact:
@@ -332,9 +365,9 @@ def resume_html(text: str) -> Markup:
     return Markup("".join(h))
 
 
-def letter_html(text: str, head: tuple[str, list[str]] | None = None) -> Markup:
+def letter_html(text: str, head: tuple[str, list[str]] | None = None, template: str = DEFAULT_TEMPLATE) -> Markup:
     L = parse_letter(text)
-    h = ['<article class="doc letter">']
+    h = [f'<article class="doc letter t-{template_name(template)}">']
     if head and head[0]:
         h.append(f'<div class="name" style="text-align:left;font-size:18pt">{escape(head[0])}</div>')
         if head[1]:
@@ -381,51 +414,68 @@ def _pack(items: list[str], sep: str = "  |  ") -> list[str]:
     return lines + ([cur] if cur else [])
 
 
-def resume_txt(text: str) -> str:
+# How each template lays out the .txt: plain text has no fonts or colours, so the three differ in structure.
+_TXT = {
+    "classic": dict(heading=lambda t: [t, "-" * len(t)], bullet=("  - ", "    "), para_gap=True, entry_gap=True, one_line=False, name=str.upper),
+    "modern": dict(heading=lambda t: [f"== {t} =="], bullet=("  * ", "    "), para_gap=True, entry_gap=True, one_line=False, name=str.upper),
+    "compact": dict(heading=lambda t: [t], bullet=("- ", "  "), para_gap=False, entry_gap=False, one_line=True, name=str.upper),
+}
+
+
+def resume_txt(text: str, template: str = DEFAULT_TEMPLATE) -> str:
+    cfg = _TXT[template_name(template)]
     r = parse_resume(text)
     out: list[str] = []
     if r.name:
-        out.append(r.name.upper())
+        out.append(cfg["name"](r.name))
     if r.contact:
         out += _pack(r.contact)
+    first, rest = cfg["bullet"]
     for sec in r.sections:
         out.append("")
         if sec.title:
-            out += [sec.title, "-" * len(sec.title)]
+            out += cfg["heading"](sec.title)
         last_kind = ""
         for kind, idx in sec.order:
-            if kind == "e" and last_kind == "e":
+            if kind == "e" and last_kind == "e" and cfg["entry_gap"]:
                 out.append("")
             last_kind = kind
             if kind == "p":
-                out += _wrap(sec.paragraphs[idx]) + [""]
+                out += _wrap(sec.paragraphs[idx]) + ([""] if cfg["para_gap"] else [])
             elif kind == "l":
-                label, rest = sec.labelled[idx]
-                out += _wrap(f"{label}: {rest}", "", "  ")
+                label, rest_text = sec.labelled[idx]
+                out += _wrap(f"{label}: {rest_text}", "", "  ")
             elif kind == "b":
-                out += _wrap(sec.bullets[idx], "  - ", "    ")
+                out += _wrap(sec.bullets[idx], first, rest)
             elif kind == "e":
                 e = sec.entries[idx]
-                head = e.title + (f"   [{e.dates}]" if e.dates and not e.org else "")
-                out += _wrap(head) if head.strip() else []
-                if e.org:
-                    out += _wrap(e.org + (f"   [{e.dates}]" if e.dates else ""))
+                if cfg["one_line"]:
+                    line = ", ".join(x for x in (e.title, e.org) if x) + (f"   [{e.dates}]" if e.dates else "")
+                    out += _wrap(line) if line.strip() else []
+                else:
+                    head = e.title + (f"   [{e.dates}]" if e.dates and not e.org else "")
+                    out += _wrap(head) if head.strip() else []
+                    if e.org:
+                        out += _wrap(e.org + (f"   [{e.dates}]" if e.dates else ""))
                 for m in e.meta:
                     out += _wrap(m)
-                for b in e.bullets:
-                    out += _wrap(b, "  - ", "    ")
+                for bl in e.bullets:
+                    out += _wrap(bl, first, rest)
         while out and out[-1] == "":
             out.pop()
     return "\r\n".join(out).strip() + "\r\n"
 
 
-def letter_txt(text: str, head: tuple[str, list[str]] | None = None) -> str:
+def letter_txt(text: str, head: tuple[str, list[str]] | None = None, template: str = DEFAULT_TEMPLATE) -> str:
+    cfg = _TXT[template_name(template)]
     L = parse_letter(text)
     out: list[str] = []
     if head and head[0]:
         out.append(head[0])
         if head[1]:
             out += _pack(head[1])
+        if template_name(template) == "modern":
+            out.append("=" * min(_WIDTH, max(len(head[0]), 20)))
         out.append("")
     for lines in L.paragraphs:
         if len(lines) == 1:
@@ -439,11 +489,14 @@ def letter_txt(text: str, head: tuple[str, list[str]] | None = None) -> str:
 
 
 # ------------------------------------------------------------------ PDF
-def _fonts(text: str) -> tuple[str, str, str]:
-    """Helvetica when every character is in Western European encoding; otherwise a Unicode font from the system if there is one."""
+_BUILTIN = ("Helvetica", "Times-Roman")
+
+
+def _fonts(text: str, serif: bool = False) -> tuple[str, str, str]:
+    """Helvetica (Times for a serif template) when every character is in Western European encoding; otherwise a Unicode font from the system if there is one."""
     try:
         text.encode("cp1252")
-        return "Helvetica", "Helvetica-Bold", "Helvetica-Oblique"
+        return ("Times-Roman", "Times-Bold", "Times-Italic") if serif else ("Helvetica", "Helvetica-Bold", "Helvetica-Oblique")
     except UnicodeEncodeError:
         pass
     import os
@@ -464,7 +517,7 @@ def _fonts(text: str) -> tuple[str, str, str]:
 
 
 def _fit(s: str, fonts: tuple[str, str, str]) -> str:
-    if fonts[0] == "Helvetica":
+    if fonts[0] in _BUILTIN:
         return s.encode("cp1252", "replace").decode("cp1252")
     return s
 
@@ -511,37 +564,56 @@ def _doc(buf, paper: str, margins):
                              title="", author="")
 
 
-def resume_pdf(text: str, paper: str = "a4", title: str = "") -> bytes:
+# Per template: the typeface family, sizes (points), spacing and margins (inches). Classic keeps the original single look.
+_PDF = {
+    "classic": dict(serif=False, accent="#111111", name_size=21, name_align=1, head_size=10.3, head_color="#111111", rule="#6b7280", rule_w=0.7,
+                    body=10, lead=14, para_gap=5, bullet_gap=2.4, entry_gap=6, head_before=11, margins=(0.8, 0.8, 0.7, 0.7),
+                    letter=dict(name_size=17, body=10.8, lead=16.2, gap=11, rule_after=22, rule_w=0.7, rule="#6b7280", margins=(1.0, 1.0, 0.9, 0.9))),
+    "modern": dict(serif=False, accent="#1e3a8a", name_size=23, name_align=0, head_size=10.3, head_color="#1e3a8a", rule=None, rule_w=0,
+                   body=10, lead=14, para_gap=5, bullet_gap=2.4, entry_gap=7, head_before=14, margins=(0.8, 0.8, 0.7, 0.7),
+                   letter=dict(name_size=19, body=10.8, lead=16.2, gap=11, rule_after=22, rule_w=1.6, rule="#1e3a8a", margins=(1.0, 1.0, 0.9, 0.9))),
+    "compact": dict(serif=True, accent="#111111", name_size=18, name_align=1, head_size=9.6, head_color="#111111", rule="#111111", rule_w=0.6,
+                    body=9.6, lead=12.6, para_gap=3.5, bullet_gap=1.2, entry_gap=3.5, head_before=8, margins=(0.65, 0.65, 0.55, 0.55),
+                    letter=dict(name_size=15, body=10.4, lead=14.6, gap=9, rule_after=14, rule_w=0.6, rule="#111111", margins=(0.9, 0.9, 0.8, 0.8))),
+}
+
+
+def resume_pdf(text: str, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from reportlab.lib.enums import TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.platypus import HRFlowable, KeepTogether, Paragraph, Spacer, Table, TableStyle
 
+    t = _PDF[template_name(template)]
     r = parse_resume(text)
-    f = _fonts(text)
+    f = _fonts(text, t["serif"])
     reg, bold, ital = f
+    b, lead = t["body"], t["lead"]
     ink, grey = colors.HexColor("#1a1a1a"), colors.HexColor("#4b5563")
-    name_s = ParagraphStyle("name", fontName=bold, fontSize=21, leading=25, alignment=TA_CENTER, textColor=colors.HexColor("#111111"), spaceAfter=3)
-    contact_s = ParagraphStyle("contact", fontName=reg, fontSize=9.2, leading=12.5, alignment=TA_CENTER, textColor=grey, spaceAfter=6)
-    head_s = ParagraphStyle("head", fontName=bold, fontSize=10.3, leading=13, textColor=colors.HexColor("#111111"), spaceBefore=11, spaceAfter=2)
-    body_s = ParagraphStyle("body", fontName=reg, fontSize=10, leading=14, textColor=ink, spaceAfter=5)
-    title_s = ParagraphStyle("title", parent=body_s, fontName=bold, spaceAfter=0, leading=13.5)
-    dates_s = ParagraphStyle("dates", parent=body_s, fontSize=9.3, textColor=grey, alignment=TA_RIGHT, spaceAfter=0, leading=13.5)
-    org_s = ParagraphStyle("org", parent=body_s, fontName=ital, textColor=colors.HexColor("#333333"), spaceAfter=1, leading=13.5)
-    meta_s = ParagraphStyle("meta", parent=body_s, fontSize=9.3, textColor=grey, spaceAfter=1, leading=12.5)
-    bul_s = ParagraphStyle("bul", parent=body_s, leftIndent=14, bulletIndent=3, spaceAfter=2.4, leading=13.6, bulletFontName=reg)
+    name_s = ParagraphStyle("name", fontName=bold, fontSize=t["name_size"], leading=t["name_size"] + 4, alignment=t["name_align"],
+                            textColor=colors.HexColor(t["accent"]), spaceAfter=3)
+    contact_s = ParagraphStyle("contact", fontName=reg, fontSize=b - 0.8, leading=b + 2.5, alignment=t["name_align"], textColor=grey, spaceAfter=6)
+    head_s = ParagraphStyle("head", fontName=bold, fontSize=t["head_size"], leading=t["head_size"] + 2.7, textColor=colors.HexColor(t["head_color"]),
+                            spaceBefore=t["head_before"], spaceAfter=2 if t["rule"] else 5)
+    body_s = ParagraphStyle("body", fontName=reg, fontSize=b, leading=lead, textColor=ink, spaceAfter=t["para_gap"])
+    title_s = ParagraphStyle("title", parent=body_s, fontName=bold, spaceAfter=0, leading=lead - 0.5)
+    dates_s = ParagraphStyle("dates", parent=body_s, fontSize=b - 0.7, textColor=grey, alignment=TA_RIGHT, spaceAfter=0, leading=lead - 0.5)
+    org_s = ParagraphStyle("org", parent=body_s, fontName=ital, textColor=colors.HexColor("#333333"), spaceAfter=1, leading=lead - 0.5)
+    meta_s = ParagraphStyle("meta", parent=body_s, fontSize=b - 0.7, textColor=grey, spaceAfter=1, leading=b + 2.5)
+    bul_s = ParagraphStyle("bul", parent=body_s, leftIndent=14, bulletIndent=3, spaceAfter=t["bullet_gap"], leading=lead - 0.4, bulletFontName=reg)
     buf = io.BytesIO()
-    doc = _doc(buf, paper, (0.8 * inch, 0.8 * inch, 0.7 * inch, 0.7 * inch))
+    doc = _doc(buf, paper, tuple(x * inch for x in t["margins"]))
     flow: list = []
     if r.name:
         flow.append(Paragraph(_para_markup(r.name, f), name_s))
     if r.contact:
-        flow.append(Paragraph(_pack_pdf(r.contact, f, reg, 9.2, doc.width - 12), contact_s))
+        flow.append(Paragraph(_pack_pdf(r.contact, f, reg, b - 0.8, doc.width - 12), contact_s))
     for sec in r.sections:
         if sec.title:
             flow.append(Paragraph(_para_markup(sec.title, f), head_s))
-            flow.append(HRFlowable(width="100%", thickness=0.7, color=colors.HexColor("#6b7280"), spaceBefore=0, spaceAfter=5))
+            if t["rule"]:
+                flow.append(HRFlowable(width="100%", thickness=t["rule_w"], color=colors.HexColor(t["rule"]), spaceBefore=0, spaceAfter=5))
         for kind, idx in sec.order:
             if kind == "p":
                 flow.append(Paragraph(_para_markup(sec.paragraphs[idx], f), body_s))
@@ -549,7 +621,7 @@ def resume_pdf(text: str, paper: str = "a4", title: str = "") -> bytes:
                 label, rest = sec.labelled[idx]
                 flow.append(Paragraph(f"<b>{_para_markup(label, f)}:</b> {_para_markup(rest, f)}", body_s))
             elif kind == "b":
-                flow.append(Paragraph(_para_markup(sec.bullets[idx], f), bul_s, bulletText="\u2022" if f[0] != "Helvetica" else "\u2022"))
+                flow.append(Paragraph(_para_markup(sec.bullets[idx], f), bul_s, bulletText="•"))
             elif kind == "e":
                 e = sec.entries[idx]
                 block: list = []
@@ -561,41 +633,43 @@ def resume_pdf(text: str, paper: str = "a4", title: str = "") -> bytes:
                     block.append(row)
                 if e.org:
                     block.append(Paragraph(_para_markup(e.org, f), org_s))
-                for m in e.meta:
-                    block.append(Paragraph(_para_markup(m, f), meta_s))
-                bullets = [Paragraph(_para_markup(b, f), bul_s, bulletText="\u2022") for b in e.bullets]
+                for mt in e.meta:
+                    block.append(Paragraph(_para_markup(mt, f), meta_s))
+                bullets = [Paragraph(_para_markup(bl, f), bul_s, bulletText="•") for bl in e.bullets]
                 if bullets:
                     flow.append(KeepTogether(block + bullets[:1]))      # a role's heading never sits alone at the foot of a page
                     flow += bullets[1:]
                 else:
                     flow.append(KeepTogether(block))
-                flow.append(Spacer(1, 6))
-    doc.title = title or r.name or "R\u00e9sum\u00e9"
+                flow.append(Spacer(1, t["entry_gap"]))
+    doc.title = title or r.name or "Résumé"
     doc.author = r.name or ""
     doc.build(flow or [Paragraph("", body_s)])
     return buf.getvalue()
 
 
-def letter_pdf(text: str, head: tuple[str, list[str]] | None = None, paper: str = "a4", title: str = "") -> bytes:
+def letter_pdf(text: str, head: tuple[str, list[str]] | None = None, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import inch
-    from reportlab.platypus import HRFlowable, KeepTogether, Paragraph, Spacer
+    from reportlab.platypus import HRFlowable, KeepTogether, Paragraph
 
+    t = _PDF[template_name(template)]
+    lt = t["letter"]
     L = parse_letter(text)
-    f = _fonts(text + (head[0] if head else "") + " ".join(head[1] if head else []))
+    f = _fonts(text + (head[0] if head else "") + " ".join(head[1] if head else []), t["serif"])
     reg, bold, _ = f
-    body_s = ParagraphStyle("lbody", fontName=reg, fontSize=10.8, leading=16.2, textColor=colors.HexColor("#1a1a1a"), spaceAfter=11)
-    name_s = ParagraphStyle("lname", fontName=bold, fontSize=17, leading=21, textColor=colors.HexColor("#111111"), spaceAfter=2)
+    body_s = ParagraphStyle("lbody", fontName=reg, fontSize=lt["body"], leading=lt["lead"], textColor=colors.HexColor("#1a1a1a"), spaceAfter=lt["gap"])
+    name_s = ParagraphStyle("lname", fontName=bold, fontSize=lt["name_size"], leading=lt["name_size"] + 4, textColor=colors.HexColor(t["accent"]), spaceAfter=2)
     contact_s = ParagraphStyle("lcontact", fontName=reg, fontSize=9.2, leading=12.5, textColor=colors.HexColor("#4b5563"), spaceAfter=4)
     buf = io.BytesIO()
-    doc = _doc(buf, paper, (1.0 * inch, 1.0 * inch, 0.9 * inch, 0.9 * inch))
+    doc = _doc(buf, paper, tuple(x * inch for x in lt["margins"]))
     flow: list = []
     if head and head[0]:
         flow.append(Paragraph(_para_markup(head[0], f), name_s))
         if head[1]:
             flow.append(Paragraph(_pack_pdf(head[1], f, reg, 9.2, doc.width - 12), contact_s))
-        flow.append(HRFlowable(width="100%", thickness=0.7, color=colors.HexColor("#6b7280"), spaceBefore=2, spaceAfter=22))
+        flow.append(HRFlowable(width="100%", thickness=lt["rule_w"], color=colors.HexColor(lt["rule"]), spaceBefore=2, spaceAfter=lt["rule_after"]))
     for lines in L.paragraphs:
         if len(lines) == 1:
             flow.append(Paragraph(_para_markup(lines[0], f), body_s))

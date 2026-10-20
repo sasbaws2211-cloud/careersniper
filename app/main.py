@@ -1491,13 +1491,15 @@ async def letter_write(job_id: int, request: Request, db: AsyncSession = Depends
 
 
 async def _letter_page(request: Request, db: AsyncSession, m: Member, doc, error: str = "", code: int = 200, content: str | None = None,
-                 saved: bool = False, fresh: bool = False):
+                 saved: bool = False, fresh: bool = False, template: str = ""):
+    tpl = _template(request, template)
     job = (await db.get(Job, doc.job_id)) if doc.job_id else None
     tracked = bool(job and (await tracker.tracked_status(db, m, job.id)))
     shown = doc.content if content is None else content
-    return templates.TemplateResponse(request, "letter.html", dict(
+    response = templates.TemplateResponse(request, "letter.html", dict(
         org=None, doc=doc, job=job, tracked=tracked, error=error, saved=saved, fresh=fresh, max_chars=letters.MAX_EDIT_CHARS,
-        preview=docfmt.letter_html(shown, await _letterhead(db, m)), content=shown), status_code=code)
+        preview=docfmt.letter_html(shown, await _letterhead(db, m), tpl), content=shown, tpl=tpl, tpls=docfmt.TEMPLATES), status_code=code)
+    return _remember_template(response, request, tpl)
 
 
 async def _letterhead(db: AsyncSession, m: Member):
@@ -1507,6 +1509,18 @@ async def _letterhead(db: AsyncSession, m: Member):
 
 def _paper(paper: str) -> str:
     return "letter" if (paper or "").lower() == "letter" else "a4"
+
+
+def _template(request: Request, template: str = "") -> str:
+    """The layout for a résumé or letter: ?template= if given, else the one the member picked last (a cookie), else Classic."""
+    return docfmt.template_name(template or request.cookies.get(docfmt.COOKIE))
+
+
+def _remember_template(response, request: Request, template: str):
+    """Remember an explicit pick so the next résumé or letter opens in the same layout."""
+    if request.query_params.get("template") and request.cookies.get(docfmt.COOKIE) != template:
+        response.set_cookie(docfmt.COOKIE, template, max_age=60 * 60 * 24 * 365, samesite="lax", secure=config.IS_PROD, httponly=True)
+    return response
 
 
 def _download(data: bytes | str, name: str, media: str) -> Response:
@@ -1530,11 +1544,11 @@ async def letters_list(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/letters/{doc_id}", response_class=HTMLResponse)
-async def letter_view(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), fresh: int = 0, saved: int = 0):
+async def letter_view(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), fresh: int = 0, saved: int = 0, template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
-    return await _letter_page(request, db, m, (await _letter_owned(db, m, doc_id)), fresh=bool(fresh), saved=bool(saved))
+    return await _letter_page(request, db, m, (await _letter_owned(db, m, doc_id)), fresh=bool(fresh), saved=bool(saved), template=template)
 
 
 @app.post("/letters/{doc_id}")
@@ -1561,31 +1575,31 @@ async def letter_delete(doc_id: int, request: Request, db: AsyncSession = Depend
 
 
 @app.get("/letters/{doc_id}/download")
-async def letter_download(doc_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def letter_download(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
     doc = await _letter_owned(db, m, doc_id)
-    return _download(docfmt.letter_txt(doc.content, await _letterhead(db, m)), letters.filename(doc), "text/plain; charset=utf-8")
+    return _download(docfmt.letter_txt(doc.content, await _letterhead(db, m), _template(request, template)), letters.filename(doc), "text/plain; charset=utf-8")
 
 
 @app.get("/letters/{doc_id}/pdf")
-async def letter_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = ""):
+async def letter_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = "", template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
     doc = await _letter_owned(db, m, doc_id)
-    pdf = docfmt.letter_pdf(doc.content, await _letterhead(db, m), paper=_paper(paper), title=doc.title)
+    pdf = docfmt.letter_pdf(doc.content, await _letterhead(db, m), paper=_paper(paper), title=doc.title, template=_template(request, template))
     return _download(pdf, letters.filename(doc)[:-4] + ".pdf", "application/pdf")
 
 
 @app.get("/letters/{doc_id}/print", response_class=HTMLResponse)
-async def letter_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def letter_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
     doc = await _letter_owned(db, m, doc_id)
-    return HTMLResponse(docfmt.page_html(doc.title, docfmt.letter_html(doc.content, await _letterhead(db, m))))
+    return HTMLResponse(docfmt.page_html(doc.title, docfmt.letter_html(doc.content, await _letterhead(db, m), _template(request, template))))
 
 
 # ---------------------------------------------------------------- tailored résumés
@@ -1634,17 +1648,19 @@ async def _tailored_owned(db: AsyncSession, m: Member, doc_id: int):
 
 
 async def _tailored_page(request: Request, db: AsyncSession, m: Member, doc, error: str = "", code: int = 200, content: str | None = None,
-                   saved: bool = False, fresh: bool = False):
+                   saved: bool = False, fresh: bool = False, template: str = ""):
+    tpl = _template(request, template)
     job = (await db.get(Job, doc.job_id)) if doc.job_id else None
     original = resume_mod.text_of((await resume_mod.get_main(db, m)))
     shown = doc.content if content is None else content
     meta = doc.meta or {}
-    return templates.TemplateResponse(request, "tailored.html", dict(
+    response = templates.TemplateResponse(request, "tailored.html", dict(
         org=None, doc=doc, job=job, error=error, saved=saved, fresh=fresh, content=shown, max_chars=tailor.MAX_EDIT_CHARS,
-        preview=docfmt.resume_html(shown),
+        preview=docfmt.resume_html(shown, tpl), tpl=tpl, tpls=docfmt.TEMPLATES,
         check=tailor.review(original, shown) if original else {"unsupported": [], "dropped_years": [], "placeholders": tailor.placeholders(shown)},
         changes=meta.get("changes") or [], gaps=meta.get("gaps") or [], coverage=meta.get("coverage") or [],
         audit=meta.get("audit"), audit_done=("audit" in meta), corrected=meta.get("corrected") or []), status_code=code)
+    return _remember_template(response, request, tpl)
 
 
 @app.get("/tailored", response_class=HTMLResponse)
@@ -1657,11 +1673,11 @@ async def tailored_list(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/tailored/{doc_id}", response_class=HTMLResponse)
-async def tailored_view(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), fresh: int = 0, saved: int = 0):
+async def tailored_view(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), fresh: int = 0, saved: int = 0, template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
-    return await _tailored_page(request, db, m, (await _tailored_owned(db, m, doc_id)), fresh=bool(fresh), saved=bool(saved))
+    return await _tailored_page(request, db, m, (await _tailored_owned(db, m, doc_id)), fresh=bool(fresh), saved=bool(saved), template=template)
 
 
 @app.post("/tailored/{doc_id}")
@@ -1688,30 +1704,30 @@ async def tailored_delete(doc_id: int, request: Request, db: AsyncSession = Depe
 
 
 @app.get("/tailored/{doc_id}/download")
-async def tailored_download(doc_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def tailored_download(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
     doc = await _tailored_owned(db, m, doc_id)
-    return _download(docfmt.resume_txt(doc.content), tailor.filename(doc), "text/plain; charset=utf-8")
+    return _download(docfmt.resume_txt(doc.content, _template(request, template)), tailor.filename(doc), "text/plain; charset=utf-8")
 
 
 @app.get("/tailored/{doc_id}/pdf")
-async def tailored_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = ""):
+async def tailored_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = "", template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
     doc = await _tailored_owned(db, m, doc_id)
-    return _download(docfmt.resume_pdf(doc.content, paper=_paper(paper), title=doc.title), tailor.filename(doc)[:-4] + ".pdf", "application/pdf")
+    return _download(docfmt.resume_pdf(doc.content, paper=_paper(paper), title=doc.title, template=_template(request, template)), tailor.filename(doc)[:-4] + ".pdf", "application/pdf")
 
 
 @app.get("/tailored/{doc_id}/print", response_class=HTMLResponse)
-async def tailored_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def tailored_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), template: str = ""):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
     doc = await _tailored_owned(db, m, doc_id)
-    return HTMLResponse(docfmt.page_html(doc.title, docfmt.resume_html(doc.content)))
+    return HTMLResponse(docfmt.page_html(doc.title, docfmt.resume_html(doc.content, _template(request, template))))
 
 
 # ---------------------------------------------------------------- interview coach
