@@ -187,6 +187,12 @@ def sitemap_index(files: list[str]) -> str:
     return "\n".join(out)
 
 
+def fits_in_one_sitemap(total_urls: int) -> bool:
+    """One flat /sitemap.xml is simplest for crawlers and for Search Console (it shows the page count straight away), so it is used
+    whenever every address fits in a single file. Only a site past SITEMAP_PAGE_SIZE addresses needs an index of several files."""
+    return total_urls <= SITEMAP_PAGE_SIZE
+
+
 def job_sitemap_files(job_count: int) -> list[str]:
     """/sitemap-jobs-1.xml ... one per SITEMAP_PAGE_SIZE jobs (at least one, so the index never has a gap)."""
     pages = max(1, -(-job_count // SITEMAP_PAGE_SIZE))

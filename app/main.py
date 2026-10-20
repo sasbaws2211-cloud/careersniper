@@ -505,13 +505,13 @@ async def _cached_sitemap(key: str, build) -> str:
     hit = _sitemap_cache.get(key)
     if hit and time.time() - hit[0] < SITEMAP_TTL:
         return hit[1]
-    shared = await cache_mod.get_json(f"public:sitemap:{key}:v1")
+    shared = await cache_mod.get_json(f"public:sitemap:{key}:v2")
     if isinstance(shared, str) and shared.startswith("<?xml"):
         _sitemap_cache[key] = (time.time(), shared)
         return shared
     text = await build()
     _sitemap_cache[key] = (time.time(), text)
-    await cache_mod.set_json(f"public:sitemap:{key}:v1", text, SITEMAP_TTL)
+    await cache_mod.set_json(f"public:sitemap:{key}:v2", text, SITEMAP_TTL)
     return text
 
 
@@ -535,42 +535,72 @@ def robots_txt():
     return PlainTextResponse(seo_mod.robots_txt(), headers=CACHEABLE)
 
 
+# Each kind of page's sitemap entries, built in one place so the single /sitemap.xml and the per-kind files can never disagree.
+def _page_entries() -> list:
+    return [(path, None) for path in seo_mod.STATIC_PAGES]
+
+
+def _content_entries() -> list:
+    return [(e.path, e.updated.isoformat()) for kind in ("blog", "alternative") for e in content_mod.entries(kind)]
+
+
+async def _company_entries(db: AsyncSession) -> list:
+    rows = await companies._directory_rows(db)      # only companies with open jobs, already cached
+    return [(f"/companies/{r['id']}-{r['slug']}", None) for r in rows]
+
+
+async def _salary_entries(db: AsyncSession) -> list:
+    return [(f"/salaries/{g['slug']}", None) for g in await salaries.index(db)]
+
+
+async def _job_count(db: AsyncSession) -> int:
+    return (await db.scalar(select(func.count()).select_from(_indexable_jobs().subquery()))) or 0
+
+
+async def _job_entries(db: AsyncSession, n: int) -> list:
+    rows = (await db.execute(
+        _indexable_jobs().with_only_columns(Job.id, func.coalesce(Job.last_seen, Job.first_seen))
+        .order_by(Job.id).offset((n - 1) * seo_mod.SITEMAP_PAGE_SIZE).limit(seo_mod.SITEMAP_PAGE_SIZE))).all()
+    return [(f"/jobs/{jid}", seen) for jid, seen in rows]
+
+
 @app.get("/sitemap.xml")
-async def sitemap_index(db: AsyncSession = Depends(get_db)):
+async def sitemap_main(db: AsyncSession = Depends(get_db)):
+    """One flat sitemap while every address fits in one file (it does for a long time); an index of several files only past that."""
     async def build() -> str:
-        jobs = (await db.scalar(select(func.count()).select_from(_indexable_jobs().subquery()))) or 0
+        jobs = await _job_count(db)
+        fixed = [*_page_entries(), *_content_entries(), *(await _company_entries(db)), *(await _salary_entries(db))]
+        if seo_mod.fits_in_one_sitemap(len(fixed) + jobs):
+            return seo_mod.urlset([*fixed, *(await _job_entries(db, 1))])
         return seo_mod.sitemap_index(["/sitemap-pages.xml", "/sitemap-content.xml", "/sitemap-companies.xml", "/sitemap-salaries.xml", *seo_mod.job_sitemap_files(jobs)])
-    return Response(await _cached_sitemap("index", build), media_type=XML, headers=CACHEABLE)
+    return Response(await _cached_sitemap("main", build), media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/sitemap-pages.xml")
 async def sitemap_pages():
-    return Response(await _cached_sitemap("pages", lambda: _static(seo_mod.urlset([(path, None) for path in seo_mod.STATIC_PAGES]))), media_type=XML, headers=CACHEABLE)
-
-
-async def _static(text: str) -> str:
-    return text
+    async def build() -> str:
+        return seo_mod.urlset(_page_entries())
+    return Response(await _cached_sitemap("pages", build), media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/sitemap-content.xml")
 async def sitemap_content():
     async def build() -> str:
-        return seo_mod.urlset([(e.path, e.updated.isoformat()) for kind in ("blog", "alternative") for e in content_mod.entries(kind)])
+        return seo_mod.urlset(_content_entries())
     return Response(await _cached_sitemap("content", build), media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/sitemap-companies.xml")
 async def sitemap_companies(db: AsyncSession = Depends(get_db)):
     async def build() -> str:
-        rows = await companies._directory_rows(db)   # only companies with open jobs, already cached
-        return seo_mod.urlset([(f"/companies/{r['id']}-{r['slug']}", None) for r in rows])
+        return seo_mod.urlset(await _company_entries(db))
     return Response(await _cached_sitemap("companies", build), media_type=XML, headers=CACHEABLE)
 
 
 @app.get("/sitemap-salaries.xml")
 async def sitemap_salaries(db: AsyncSession = Depends(get_db)):
     async def build() -> str:
-        return seo_mod.urlset([(f"/salaries/{g['slug']}", None) for g in await salaries.index(db)])
+        return seo_mod.urlset(await _salary_entries(db))
     return Response(await _cached_sitemap("salaries", build), media_type=XML, headers=CACHEABLE)
 
 
@@ -580,10 +610,7 @@ async def sitemap_jobs(n: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "No such sitemap")
 
     async def build() -> str:
-        rows = (await db.execute(
-            _indexable_jobs().with_only_columns(Job.id, func.coalesce(Job.last_seen, Job.first_seen))
-            .order_by(Job.id).offset((n - 1) * seo_mod.SITEMAP_PAGE_SIZE).limit(seo_mod.SITEMAP_PAGE_SIZE))).all()
-        return seo_mod.urlset([(f"/jobs/{jid}", seen) for jid, seen in rows])
+        return seo_mod.urlset(await _job_entries(db, n))
     text = await _cached_sitemap(f"jobs-{n}", build)
     if n > 1 and "<url>" not in text:
         raise HTTPException(404, "No such sitemap")      # past the last page: not an empty file crawlers keep asking for
