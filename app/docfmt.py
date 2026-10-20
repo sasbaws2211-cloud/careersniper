@@ -679,3 +679,261 @@ def letter_pdf(text: str, head: tuple[str, list[str]] | None = None, paper: str 
     doc.author = (head[0] if head else "") or ""
     doc.build(flow or [Paragraph("", body_s)])
     return buf.getvalue()
+
+
+# ------------------------------------------------------------------ Word (.docx)
+# The same three templates as a Word file: real Heading and List Bullet styles (so it edits cleanly and reads well in applicant-tracking
+# systems), no tables or text boxes, dates on a right-aligned tab stop, and fonts every Word install has.
+DOCX_MEDIA = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_DOCX_FONT = {"classic": "Arial", "modern": "Arial", "compact": "Times New Roman"}
+_XML_BAD = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f￾￿]")
+_PPR_AFTER_BORDER = ("w:shd", "w:tabs", "w:suppressAutoHyphens", "w:kinsoku", "w:wordWrap", "w:overflowPunct", "w:topLinePunct", "w:autoSpaceDE",
+                     "w:autoSpaceDN", "w:bidi", "w:adjustRightInd", "w:snapToGrid", "w:spacing", "w:ind", "w:contextualSpacing", "w:mirrorIndents",
+                     "w:suppressOverlap", "w:jc", "w:textDirection", "w:textAlignment", "w:textboxTightWrap", "w:outlineLvl", "w:divId",
+                     "w:cnfStyle", "w:rPr", "w:sectPr", "w:pPrChange")
+
+
+def _xml_safe(s: str) -> str:
+    """Word files are XML: control characters that XML forbids would make python-docx refuse the text."""
+    return _XML_BAD.sub("", s or "")
+
+
+def _hex(color: str) -> str:
+    return color.lstrip("#").upper()
+
+
+def _set_font(font, name: str) -> None:
+    """A typeface for a style or run, overriding the theme fonts the default styles point at."""
+    from docx.oxml.ns import qn
+    font.name = name
+    rfonts = font._element.get_or_add_rPr().rFonts
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        rfonts.set(qn(attr), name)
+    for attr in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+        if rfonts.get(qn(attr)) is not None:
+            del rfonts.attrib[qn(attr)]
+
+
+def _bottom_rule(element, color: str, points: float) -> None:
+    """A thin line under a paragraph or style, put where Word's schema expects it."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    ppr = element.get_or_add_pPr()
+    for old in ppr.findall(qn("w:pBdr")):
+        ppr.remove(old)
+    border, bottom = OxmlElement("w:pBdr"), OxmlElement("w:bottom")
+    for k, v in (("w:val", "single"), ("w:sz", str(max(2, round(points * 8)))), ("w:space", "1"), ("w:color", _hex(color))):
+        bottom.set(qn(k), v)
+    border.append(bottom)
+    ppr.insert_element_before(border, *_PPR_AFTER_BORDER)
+
+
+def _add_link(par, text: str, url: str, color: str, size=None) -> None:
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), par.part.relate_to(url, RT.HYPERLINK, is_external=True))
+    run, rpr, col = OxmlElement("w:r"), OxmlElement("w:rPr"), OxmlElement("w:color")
+    col.set(qn("w:val"), _hex(color))
+    rpr.append(col)
+    if size:
+        sz = OxmlElement("w:sz")
+        sz.set(qn("w:val"), str(round(size * 2)))
+        rpr.append(sz)
+    run.append(rpr)
+    t = OxmlElement("w:t")
+    t.text = text
+    t.set(qn("xml:space"), "preserve")
+    run.append(t)
+    link.append(run)
+    par._p.append(link)
+
+
+def _runs(par, text: str, *, bold=None, italic=None, size=None, color=None, link_color="#1d4ed8") -> None:
+    """Text added to a paragraph, with web and e-mail addresses made clickable."""
+    from docx.shared import Pt, RGBColor
+
+    def plain(chunk: str) -> None:
+        if not chunk:
+            return
+        run = par.add_run(chunk)
+        if bold is not None:
+            run.bold = bold
+        if italic is not None:
+            run.italic = italic
+        if size:
+            run.font.size = Pt(size)
+        if color:
+            run.font.color.rgb = RGBColor.from_string(_hex(color))
+    s = _xml_safe(text)
+    urls = [(m.start(), m.end(), m.group(0), "u") for m in _URL.finditer(s)]
+    mails = [(m.start(), m.end(), m.group(0), "e") for m in _EMAILRE.finditer(s) if not any(a <= m.start() < b for a, b, _, _ in urls)]
+    pos = 0
+    for a, b, v, kind in sorted(urls + mails):
+        if a < pos:
+            continue
+        plain(s[pos:a])
+        _add_link(par, v, v if kind == "u" else "mailto:" + v, link_color, size)
+        pos = b
+    plain(s[pos:])
+
+
+def _docx_base(paper: str, margins, template: str, size: float, lead: float, name_size: float, name_align: int, accent: str):
+    """A blank document with the template's page, margins, typeface and Title style set."""
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.shared import Inches, Pt, RGBColor
+    d = Document()
+    sec = d.sections[0]
+    sec.page_width, sec.page_height = (Inches(8.5), Inches(11)) if paper == "letter" else (Inches(8.27), Inches(11.69))
+    sec.left_margin, sec.right_margin, sec.top_margin, sec.bottom_margin = (Inches(x) for x in margins)
+    face = _DOCX_FONT[template]
+    normal = d.styles["Normal"]
+    _set_font(normal.font, face)
+    normal.font.size = Pt(size)
+    normal.font.color.rgb = RGBColor.from_string("1A1A1A")
+    normal.paragraph_format.space_after = Pt(0)
+    normal.paragraph_format.line_spacing = round(lead / size, 2)
+    title = d.styles["Title"]
+    _set_font(title.font, face)
+    title.font.size, title.font.bold, title.font.italic = Pt(name_size), True, False
+    title.font.color.rgb = RGBColor.from_string(_hex(accent))
+    title.paragraph_format.space_before, title.paragraph_format.space_after = Pt(0), Pt(3)
+    title.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER if name_align == 1 else WD_ALIGN_PARAGRAPH.LEFT
+    ppr = title.element.pPr
+    if ppr is not None:
+        for border in ppr.findall(qn("w:pBdr")):            # the default Title style carries a rule under it
+            ppr.remove(border)
+    return d, sec.page_width - sec.left_margin - sec.right_margin
+
+
+def _docx_props(d, title: str, author: str) -> None:
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    cp = d.core_properties
+    cp.title, cp.author, cp.last_modified_by, cp.comments, cp.subject, cp.keywords = title, author, "", "", "", ""
+    cp.created = cp.modified = now
+
+
+def _docx_bytes(d) -> bytes:
+    buf = io.BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
+def _contact_items(items: list[str]) -> list[str]:
+    return [i.replace(" ", " ") for i in items]              # an item (a phone number, a city) never splits across two lines
+
+
+def _contact_par(d, items: list[str], size: float, align) -> object:
+    from docx.shared import Pt
+    p = d.add_paragraph()
+    p.alignment = align
+    for k, it in enumerate(_contact_items(items)):
+        if k:
+            _runs(p, "  |  ", size=size, color="#4b5563")
+        _runs(p, it, size=size, color="#4b5563")
+    p.paragraph_format.space_after = Pt(6)
+    return p
+
+
+def resume_docx(text: str, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
+    from docx.shared import Pt, RGBColor
+
+    tname = template_name(template)
+    t = _PDF[tname]
+    r = parse_resume(text)
+    b = t["body"]
+    d, width = _docx_base(paper, t["margins"], tname, b, t["lead"], t["name_size"], t["name_align"], t["accent"])
+    align = WD_ALIGN_PARAGRAPH.CENTER if t["name_align"] == 1 else WD_ALIGN_PARAGRAPH.LEFT
+    face = _DOCX_FONT[tname]
+
+    head = d.styles["Heading 1"]
+    _set_font(head.font, face)
+    head.font.size, head.font.bold, head.font.italic = Pt(t["head_size"]), True, False
+    head.font.color.rgb = RGBColor.from_string(_hex(t["head_color"]))
+    head.paragraph_format.space_before = Pt(t["head_before"])
+    head.paragraph_format.space_after = Pt(4 if t["rule"] else 5)
+    head.paragraph_format.keep_with_next = True
+    if t["rule"]:
+        _bottom_rule(head.element, t["rule"], t["rule_w"])
+    bullet = d.styles["List Bullet"]
+    _set_font(bullet.font, face)
+    bullet.font.size = Pt(b)
+    bullet.paragraph_format.space_after = Pt(t["bullet_gap"])
+
+    if r.name:
+        _runs(d.add_paragraph(style="Title"), r.name)
+    if r.contact:
+        _contact_par(d, r.contact, b - 0.8, align)
+    for sec in r.sections:
+        if sec.title:
+            _runs(d.add_paragraph(style="Heading 1"), sec.title)
+        for kind, idx in sec.order:
+            if kind == "p":
+                p = d.add_paragraph()
+                _runs(p, sec.paragraphs[idx])
+                p.paragraph_format.space_after = Pt(t["para_gap"])
+            elif kind == "l":
+                label, rest = sec.labelled[idx]
+                p = d.add_paragraph()
+                _runs(p, label + ":", bold=True)
+                _runs(p, " " + rest)
+                p.paragraph_format.space_after = Pt(t["para_gap"])
+            elif kind == "b":
+                _runs(d.add_paragraph(style="List Bullet"), sec.bullets[idx])
+            elif kind == "e":
+                e = sec.entries[idx]
+                first = len(d.paragraphs)
+                if e.title or e.dates:
+                    p = d.add_paragraph()
+                    _runs(p, e.title, bold=True)
+                    if e.dates:
+                        p.paragraph_format.tab_stops.add_tab_stop(width, WD_TAB_ALIGNMENT.RIGHT)
+                        p.add_run("\t")
+                        _runs(p, e.dates, size=b - 0.7, color="#4b5563")
+                if e.org:
+                    _runs(d.add_paragraph(), e.org, italic=True, color="#333333")
+                for mt in e.meta:
+                    _runs(d.add_paragraph(), mt, size=b - 0.7, color="#4b5563")
+                if e.bullets:
+                    for p in d.paragraphs[first:]:
+                        p.paragraph_format.keep_with_next = True       # a role's heading never sits alone at the foot of a page
+                for bl in e.bullets:
+                    _runs(d.add_paragraph(style="List Bullet"), bl)
+                if len(d.paragraphs) > first:
+                    d.paragraphs[-1].paragraph_format.space_after = Pt(t["entry_gap"])
+    _docx_props(d, title or r.name or "Résumé", r.name or "")
+    return _docx_bytes(d)
+
+
+def letter_docx(text: str, head: tuple[str, list[str]] | None = None, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
+
+    tname = template_name(template)
+    t = _PDF[tname]
+    lt = t["letter"]
+    L = parse_letter(text)
+    d, _ = _docx_base(paper, lt["margins"], tname, lt["body"], lt["lead"], lt["name_size"], 0, t["accent"])
+    if head and head[0]:
+        _runs(d.add_paragraph(style="Title"), head[0])
+        if head[1]:
+            last = _contact_par(d, head[1], 9.2, WD_ALIGN_PARAGRAPH.LEFT)
+        else:
+            last = d.paragraphs[-1]
+        _bottom_rule(last._p, lt["rule"], lt["rule_w"])
+        last.paragraph_format.space_after = Pt(lt["rule_after"])
+    for lines in L.paragraphs:
+        p = d.add_paragraph()
+        for k, line in enumerate(lines):
+            if k:
+                p.add_run().add_break()
+            _runs(p, line)
+        p.paragraph_format.space_after = Pt(lt["gap"])
+        p.paragraph_format.keep_together = True
+    _docx_props(d, title or "Cover letter", (head[0] if head else "") or "")
+    return _docx_bytes(d)

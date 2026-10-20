@@ -1593,6 +1593,16 @@ async def letter_pdf(doc_id: int, request: Request, db: AsyncSession = Depends(g
     return _download(pdf, letters.filename(doc)[:-4] + ".pdf", "application/pdf")
 
 
+@app.get("/letters/{doc_id}/docx")
+async def letter_docx(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = "", template: str = ""):
+    m = await current_member(request, db)
+    if not m:
+        return RedirectResponse(f"/member/login?next=/letters/{doc_id}", status_code=303)
+    doc = await _letter_owned(db, m, doc_id)
+    data = docfmt.letter_docx(doc.content, await _letterhead(db, m), paper=_paper(paper), title=doc.title, template=_template(request, template))
+    return _download(data, letters.filename(doc)[:-4] + ".docx", docfmt.DOCX_MEDIA)
+
+
 @app.get("/letters/{doc_id}/print", response_class=HTMLResponse)
 async def letter_print(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), template: str = ""):
     m = await current_member(request, db)
@@ -1719,6 +1729,16 @@ async def tailored_pdf(doc_id: int, request: Request, db: AsyncSession = Depends
         return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
     doc = await _tailored_owned(db, m, doc_id)
     return _download(docfmt.resume_pdf(doc.content, paper=_paper(paper), title=doc.title, template=_template(request, template)), tailor.filename(doc)[:-4] + ".pdf", "application/pdf")
+
+
+@app.get("/tailored/{doc_id}/docx")
+async def tailored_docx(doc_id: int, request: Request, db: AsyncSession = Depends(get_db), paper: str = "", template: str = ""):
+    m = await current_member(request, db)
+    if not m:
+        return RedirectResponse(f"/member/login?next=/tailored/{doc_id}", status_code=303)
+    doc = await _tailored_owned(db, m, doc_id)
+    data = docfmt.resume_docx(doc.content, paper=_paper(paper), title=doc.title, template=_template(request, template))
+    return _download(data, tailor.filename(doc)[:-4] + ".docx", docfmt.DOCX_MEDIA)
 
 
 @app.get("/tailored/{doc_id}/print", response_class=HTMLResponse)
