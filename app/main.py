@@ -32,7 +32,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail, applylink
 from . import search as search_mod
 from . import seo as seo_mod
 from . import content as content_mod
@@ -743,6 +743,7 @@ async def apply_redirect(job_id: int, request: Request, org: Org = Depends(tenan
     url = job.url.strip()
     if not (url.startswith("http://") or url.startswith("https://") or url.startswith("mailto:")):
         raise HTTPException(404, "Job link unavailable")
+    url = applylink.for_job(job)      # the same address, plus a tag that tells the employer's hiring system the applicant came from us
     if me:
         loomail.emit(me.id, "apply_clicked", {"company": job.company.name if job.company else "", "title": (job.title or "")[:80]})
     if security.limiter.hit(f"go:{security.client_ip(request)}:{job.id}", 1, 600):
@@ -2170,7 +2171,7 @@ async def api_jobs(request: Request, db: AsyncSession = Depends(get_db),
         "jobs": [
             dict(
                 id=j.id, title=j.title, company=j.company.name, location=j.location, remote=j.remote,
-                apply_url=j.url if has_access else None, posted_at=j.posted_at, first_seen=j.first_seen,
+                apply_url=applylink.for_job(j) if has_access else None, posted_at=j.posted_at, first_seen=j.first_seen,
                 countries=[c for c in (j.countries or "").split("|") if c], job_type=j.job_type or None, seniority=j.seniority or None,
                 workplace=j.workplace or None, remote_regions=[r for r in (j.remote_regions or "").split("|") if r],
                 last_confirmed_open=j.last_seen, repost_count=j.repost_count or 0, visa_sponsorship=j.visa or None, salary_period=j.salary_period or None,
