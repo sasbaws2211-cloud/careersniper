@@ -57,24 +57,6 @@ li.done .tick{background:#16a34a;border-color:#16a34a;color:#fff}li.done b{color
 .job-meta{color:var(--muted);font-size:13px;margin-bottom:8px}
 .job-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .job-tags .muted{font-size:12px;margin-left:2px}
-.ats-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:11px;font-weight:600;letter-spacing:0.02em;
-  padding:2px 8px 2px 4px;border-radius:999px;border:1px solid var(--line);
-  background:#f1f5f9;color:#374151;text-transform:capitalize;
-  line-height:1;
-}
-.ats-badge .ats-logo{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none}
-.ats-badge .ats-logo svg{display:block;border-radius:3px}
-.ats-badge .ats-name{padding-right:2px}
-.ats-greenhouse{background:#e8f5e9;border-color:#a5d6a7;color:#1b5e20}
-.ats-lever{background:#e3f2fd;border-color:#90caf9;color:#0d47a1}
-.ats-ashby{background:#f3e5f5;border-color:#ce93d8;color:#4a148c}
-.ats-workday{background:#fff3e0;border-color:#ffcc80;color:#e65100}
-.ats-smartrecruiters{background:#e0f2f1;border-color:#80cbc4;color:#004d40}
-.ats-workable{background:#fce4ec;border-color:#f48fb1;color:#880e4f}
-.ats-recruitee{background:#e8eaf6;border-color:#9fa8da;color:#1a237e}
-.ats-teamtailor,.ats-personio,.ats-bamboohr{background:#e2e8f0;border-color:#cbd5e1;color:#424242}
 .preview-banner{
   background:linear-gradient(135deg,#eff6ff,#f0fdf4);
   border:1px solid #93c5fd;border-radius:12px;padding:16px 18px;margin-bottom:16px;

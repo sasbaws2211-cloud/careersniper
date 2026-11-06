@@ -8,7 +8,6 @@
   'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Jobs', '/jobs'), (job.company.name, company_path), (job.title, '/jobs/' ~ job.id)])]
 } %}
 {% block body %}
-{% set ats = (job.source or job.company.ats or '')|lower %}
 {% set initial = (job.company.name[:1] if job.company.name else '?')|upper %}
 {% set after_apply = '/jobs/' ~ job.id ~ '?unlocked=1' %}
 {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ (after_apply|urlencode))|urlencode %}
@@ -31,7 +30,6 @@
         {% if job.employment_type %} · {{ job.employment_type }}{% endif %}
       </div>
       <div class="job-tags" style="margin-top:8px">
-        {% if ats %}{% with ats=ats %}{% include "_ats_icon.html" %}{% endwith %}{% endif %}
         {% if job.remote %}<span class="tag">Remote</span>{% endif %}
         {% if job.featured_until and job.featured_until > now %}<span class="tag">Featured</span>{% endif %}
         {% if job.pay_max_usd and job.pay_max_usd > 0 %}{% set lo = job.pay_min_usd or job.pay_max_usd %}<span class="tag">≈ ${{ '{:,}'.format(lo) }}{% if lo != job.pay_max_usd %}–${{ '{:,}'.format(job.pay_max_usd) }}{% endif %} / yr</span>
