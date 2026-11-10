@@ -108,6 +108,18 @@
   .points span { color: #475569; font-size: .92rem; }
   @media (max-width: 720px) { .points { grid-template-columns: 1fr; } .shot-view { max-height: 360px; } }
   .mid-cta { text-align: center; margin: 8px 0 40px; }
+  .tools { max-width: 920px; margin: 8px auto 44px; padding: 0 16px; text-align: center; }
+  .tools h2 { font-size: 1.7rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .tools .lead { color: #475569; max-width: 38em; margin: 0 auto 22px; font-size: 1.05rem; line-height: 1.55; }
+  .tool-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left; }
+  @media (max-width: 640px) { .tool-cards { grid-template-columns: 1fr; } }
+  .tool-card { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 20px;
+               text-decoration: none; color: inherit; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .tool-card:hover { border-color: #2563eb; box-shadow: 0 6px 18px rgba(37, 99, 235, .15); }
+  .tool-card b { font-size: 1.15rem; color: #0f172a; }
+  .tool-card span { color: #475569; line-height: 1.5; }
+  .tool-card .go { font-style: normal; font-weight: 700; color: #1d4ed8; margin-top: 6px; }
+  .tool-note { color: #6b7280; font-size: .88rem; margin: 14px 0 0; }
 
   .section { max-width: 760px; margin: 0 auto 40px; padding: 0 16px; }
   .section h2 { text-align: center; margin-bottom: 8px; }
@@ -286,6 +298,24 @@
   <div class="muted" style="font-size:.88rem;margin-top:2px">Free preview, no card needed &middot; {{ REFUND_DAYS }}-day money-back promise on every plan</div>
 </div>
 
+<section class="tools" aria-labelledby="tools-title">
+  <h2 id="tools-title">Free résumé and CV builder</h2>
+  <p class="lead">Build one in minutes and download it as a PDF, a Word file or plain text. No sign-up, no watermark{% if ai_on %}, and optional AI help with the wording{% endif %}.</p>
+  <div class="tool-cards">
+    <a class="tool-card" href="/free-resume-builder">
+      <b>R&eacute;sum&eacute; builder</b>
+      <span>One or two pages, laid out so applicant tracking systems can read it.</span>
+      <i class="go">Build my r&eacute;sum&eacute; &rarr;</i>
+    </a>
+    <a class="tool-card" href="/free-cv-builder">
+      <b>CV builder</b>
+      <span>Education first, with room for publications, languages and references.</span>
+      <i class="go">Build my CV &rarr;</i>
+    </a>
+  </div>
+  <p class="tool-note">Three layouts: Classic, Modern and Compact. Your draft stays in your browser.</p>
+</section>
+
 
 
 <div class="section faq">
@@ -297,6 +327,10 @@
   <details>
     <summary>What are job alerts?</summary>
     <p class="muted">Save a search (title, remote, location, filters). After you confirm your email, we send a digest when new matching roles appear.</p>
+  </details>
+  <details>
+    <summary>Is there a free résumé or CV builder?</summary>
+    <p class="muted">Yes. <a href="/free-resume-builder">Build a résumé</a> or <a href="/free-cv-builder">a CV</a> with a live preview and download it as a PDF, a Word file or plain text. You do not need an account.</p>
   </details>
   <details>
     <summary>What if it is not for me?</summary>
