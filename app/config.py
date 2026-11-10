@@ -147,6 +147,10 @@ AI_FREE_REQUESTS = int(os.getenv("AI_FREE_REQUESTS", "0"))               # lifet
 AI_JSON_MODE = os.getenv("AI_JSON_MODE", "0") == "1"                     # ask OpenAI-style servers for response_format=json_object (not all support it)
 AI_TOKEN_PARAM = os.getenv("AI_TOKEN_PARAM", "")                         # override: max_tokens or max_completion_tokens
 AI_EXTRA_BODY = os.getenv("AI_EXTRA_BODY", "")                           # JSON merged into every OpenAI-style request, e.g. {"chat_template_kwargs": {"enable_thinking": false}} to stop a reasoning model spending its token budget on thinking
+# The free résumé builder's AI help is open to anyone without an account, so it is limited per visitor and for everyone together (the model's own quota is the real ceiling).
+BUILDER_AI_PER_IP_HOUR = int(os.getenv("BUILDER_AI_PER_IP_HOUR", "15"))
+BUILDER_AI_PER_IP_DAY = int(os.getenv("BUILDER_AI_PER_IP_DAY", "40"))
+BUILDER_AI_ALL_HOUR = int(os.getenv("BUILDER_AI_ALL_HOUR", "300"))
 
 # ---- Environment / production hardening ----
 APP_ENV = os.getenv("APP_ENV", "development")

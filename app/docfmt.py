@@ -225,6 +225,23 @@ def parse_resume(text: str) -> Resume:
     return doc
 
 
+def _resume_of(source) -> Resume:
+    """A Resume from text (read by `parse_resume`) or from one that is already built, as the résumé builder does: nothing is guessed for those."""
+    return source if isinstance(source, Resume) else parse_resume(source)
+
+
+def flat_text(r: Resume) -> str:
+    """Every piece of text in a Resume on separate lines (used to pick a font that has all its characters)."""
+    parts = [r.name, *r.contact]
+    for sec in r.sections:
+        parts += [sec.title, *sec.paragraphs, *sec.bullets]
+        for label, rest in sec.labelled:
+            parts += [label, rest]
+        for e in sec.entries:
+            parts += [e.title, e.org, e.dates, *e.meta, *e.bullets]
+    return "\n".join(x for x in parts if x)
+
+
 def letterhead(resume_text: str) -> tuple[str, list[str]] | None:
     """(name, contact items) from the top of a résumé, to head a cover letter the same way, or None when there is nothing usable."""
     r = parse_resume(resume_text)
@@ -322,8 +339,8 @@ def _contact_html(items: list[str]) -> str:
     return "".join("<div>" + '<span class="sep">|</span>'.join(f"<span>{_link(i)}</span>" for i in ln) + "</div>" for ln in lines)
 
 
-def resume_html(text: str, template: str = DEFAULT_TEMPLATE) -> Markup:
-    r = parse_resume(text)
+def resume_html(text, template: str = DEFAULT_TEMPLATE) -> Markup:
+    r = _resume_of(text)
     h = [f'<article class="doc resume t-{template_name(template)}">']
     if r.name:
         h.append(f'<div class="name">{escape(r.name)}</div>')
@@ -422,9 +439,9 @@ _TXT = {
 }
 
 
-def resume_txt(text: str, template: str = DEFAULT_TEMPLATE) -> str:
+def resume_txt(text, template: str = DEFAULT_TEMPLATE) -> str:
     cfg = _TXT[template_name(template)]
-    r = parse_resume(text)
+    r = _resume_of(text)
     out: list[str] = []
     if r.name:
         out.append(cfg["name"](r.name))
@@ -578,7 +595,7 @@ _PDF = {
 }
 
 
-def resume_pdf(text: str, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
+def resume_pdf(text, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle
@@ -586,8 +603,8 @@ def resume_pdf(text: str, paper: str = "a4", title: str = "", template: str = DE
     from reportlab.platypus import HRFlowable, KeepTogether, Paragraph, Spacer, Table, TableStyle
 
     t = _PDF[template_name(template)]
-    r = parse_resume(text)
-    f = _fonts(text, t["serif"])
+    r = _resume_of(text)
+    f = _fonts(flat_text(r), t["serif"])
     reg, bold, ital = f
     b, lead = t["body"], t["lead"]
     ink, grey = colors.HexColor("#1a1a1a"), colors.HexColor("#4b5563")
@@ -839,13 +856,13 @@ def _contact_par(d, items: list[str], size: float, align) -> object:
     return p
 
 
-def resume_docx(text: str, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
+def resume_docx(text, paper: str = "a4", title: str = "", template: str = DEFAULT_TEMPLATE) -> bytes:
     from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
     from docx.shared import Pt, RGBColor
 
     tname = template_name(template)
     t = _PDF[tname]
-    r = parse_resume(text)
+    r = _resume_of(text)
     b = t["body"]
     d, width = _docx_base(paper, t["margins"], tname, b, t["lead"], t["name_size"], t["name_align"], t["accent"])
     align = WD_ALIGN_PARAGRAPH.CENTER if t["name_align"] == 1 else WD_ALIGN_PARAGRAPH.LEFT

@@ -1,0 +1,151 @@
+{% extends "_tenant.html" %}
+{% set cv = mode == 'cv' %}
+{% set core = 'Free CV Builder: No Sign-Up, PDF and Word' if cv else 'Free Resume Builder: No Sign-Up, PDF and Word' %}
+{% set seo = {
+  'title': brand_title(core, PLATFORM),
+  'description': clip('Build a free CV in minutes and download it as PDF, Word or text. No sign-up, no watermark, with the sections UK, European and academic CVs use.' if cv else 'Build a free résumé in minutes and download it as PDF, Word or text. No sign-up, no watermark, and three layouts that applicant tracking systems can read.'),
+  'canonical': path,
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free CV builder' if cv else 'Free résumé builder', path)]),
+    {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': ('Free CV builder' if cv else 'Free résumé builder') ~ ' by ' ~ PLATFORM, 'url': abs_url(path),
+     'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Any', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+  ]
+} %}
+{% block head %}
+<style>
+{{ DOC_CSS|safe }}
+.rb-layout{display:grid;gap:20px;grid-template-columns:1fr;align-items:start;margin:8px 0 28px}
+@media (min-width:1000px){.rb-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rb-side{position:sticky;top:12px}}
+.rb-group{border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:14px 16px 16px;margin:0 0 14px;background:#fff;min-width:0}
+.rb-group legend{font-weight:700;font-size:1.02rem;padding:0 6px}
+.rb-hint{color:#64748b;font-size:.85rem;margin:4px 0 8px}
+.rb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.rb-field{display:flex;flex-direction:column;gap:3px;margin:0 0 8px;min-width:0}
+.rb-field.wide{grid-column:1/-1}
+.rb-field label{font-size:.85rem;font-weight:600;color:#334155}
+.rb-field input,.rb-field textarea{width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+.rb-field textarea{resize:vertical;line-height:1.4}
+.rb-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin:0 0 10px;background:#f8fafc}
+.rb-cardhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.rb-tools{display:flex;gap:6px;flex-wrap:wrap}
+button.sm{padding:3px 9px;font-size:.8rem}
+button.rb-danger{background:#fff;color:#b91c1c;border:1px solid #fca5a5}
+button.rb-danger:hover{background:#fef2f2}
+.rb-jump{display:inline-block;margin:6px 0 0;font-size:.9rem}
+@media (min-width:1000px){.rb-jump{display:none}}
+.rb-bar{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.rb-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px}
+.rb-row:last-child{margin-bottom:0}
+.rb-row .lbl{font-size:.85rem;font-weight:600;color:#334155;margin-right:2px}
+.rb-bar button[aria-pressed="true"]{background:var(--brand,#2563eb);color:#fff;border-color:var(--brand,#2563eb)}
+.rb-bar select{font:inherit;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+.rb-status{min-height:1.3em;font-size:.9rem;color:#166534;margin:6px 0 0}
+.rb-status.bad{color:#b91c1c}
+.rb-previewwrap{background:#e5e7eb;border-radius:12px;padding:14px;overflow-x:auto}
+.rb-previewwrap .doc{box-shadow:0 2px 14px rgba(0,0,0,.18);padding:34px 36px;font-size:9.6pt;max-width:none}
+.rb-previewwrap .doc.t-compact{padding:28px 30px;font-size:9.2pt}
+.rb-empty{background:#fff;border-radius:8px;padding:40px 24px;text-align:center;color:#64748b}
+.rb-note{font-size:.82rem;color:#64748b;margin:8px 2px 0}
+.rb-article{max-width:760px;margin:10px auto 40px}
+.rb-article h2{margin:28px 0 8px;font-size:1.25rem}
+.rb-article p,.rb-article li{line-height:1.6}
+.rb-article details{border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin:0 0 8px;background:#fff}
+.rb-article summary{cursor:pointer;font-weight:600}
+.rb-aibox{margin:0 0 8px}
+.rb-airow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rb-ai{border:1px solid #c7d2fe;background:#eef2ff;border-radius:10px;padding:10px 12px;margin:8px 0}
+.rb-aihead{margin:0 0 8px}
+.rb-aiitem{background:#fff;border:1px solid #e0e7ff;border-radius:8px;padding:8px 10px;margin:0 0 8px}
+.rb-aiwas{color:#64748b;font-size:.85rem;margin-bottom:3px}
+.rb-aitext{white-space:pre-wrap;line-height:1.45}
+.rb-aiwarn{color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 8px;margin:6px 0;font-size:.85rem}
+.rb-aiact{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.rb-aierr{color:#b91c1c;margin-bottom:6px}
+.rb-aiwait{color:#334155}
+.rb-cta{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;margin:26px 0}
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>{{ 'Free CV builder' if cv else 'Free résumé builder' }}</h1>
+  <div class="muted">{{ 'Build your CV, see it as you type, and download it as a PDF, a Word file or plain text.' if cv else 'Build your résumé, see it as you type, and download it as a PDF, a Word file or plain text.' }}
+    No sign-up and no watermark.</div>
+  {% if ai_on %}<p class="muted" style="font-size:.9rem;margin:6px 0 0"><b>AI help is on.</b> Ask it to write your {{ 'profile' if cv else 'summary' }} or to tighten the points under a job. It sends only that section&rsquo;s text to an AI service, and it can get things wrong, so check every line.</p>{% endif %}
+  <p class="muted" style="font-size:.9rem;margin:6px 0 0">Your draft is saved only in this browser. We do not save it to an account or keep a copy{% if ai_on %} (AI help, if you use it, is the one exception: it sends that section&rsquo;s text to an AI service){% endif %}.
+    <a class="rb-jump" href="#rb-side">Jump to the preview and downloads &darr;</a><br>
+    {% if cv %}Want a one-page résumé instead? <a href="{{ other_path }}">Use the résumé builder</a>.{% else %}Applying outside the US or for an academic job? <a href="{{ other_path }}">Use the CV builder</a>.{% endif %}</p>
+</div>
+
+<div id="rb" data-mode="{{ mode }}" data-ai="{{ '1' if ai_on else '0' }}" class="rb-layout">
+  <form id="rb-form" aria-label="{{ 'CV' if cv else 'Résumé' }} details"></form>
+
+  <aside class="rb-side" id="rb-side" aria-label="Preview and downloads">
+    <div class="rb-bar">
+      <div class="rb-row"><span class="lbl">Layout</span>
+        {% for key, label, blurb in layouts %}<button type="button" class="ghost" data-layout="{{ key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}" title="{{ blurb }}">{{ label }}</button>{% endfor %}
+</div>
+      <div class="rb-row"><span class="lbl">Download</span>
+        <button type="button" data-download="pdf">PDF</button>
+        <button type="button" class="ghost" data-download="docx">Word</button>
+        <button type="button" class="ghost" data-download="txt">Plain text</button>
+        <span class="lbl" style="margin-left:6px">Paper</span>
+        <select id="rb-paper" aria-label="Paper size"><option value="a4">A4</option><option value="letter">US Letter</option></select></div>
+      <div class="rb-row"><button type="button" class="ghost sm" id="rb-example">Fill in an example</button>
+        <button type="button" class="ghost sm rb-danger" id="rb-clear">Clear everything</button></div>
+      <div id="rb-status" class="rb-status" role="status" aria-live="polite"></div>
+    </div>
+    <div class="rb-previewwrap"><div id="rb-preview"></div></div>
+    <p class="rb-note">The preview is close to the file but not identical: the PDF and Word file may break pages a little differently.</p>
+  </aside>
+</div>
+<script type="application/json" id="rb-sample">{{ sample|tojson }}</script>
+<script src="/static/builder.js?v={{ CSS_V }}" defer></script>
+
+<div class="rb-article">
+{% if cv %}
+  <h2>How to build a CV that gets read</h2>
+  <ol>
+    <li><b>Check what the country and field expect.</b> In the UK, Ireland, much of Europe, Africa and Asia, &ldquo;CV&rdquo; is the normal word for the document you send with a job application. In the US it usually means a longer academic document, and employers there ask for a résumé.</li>
+    <li><b>Put the strongest section first.</b> Early-career and academic CVs often start with education. Experienced candidates usually lead with work experience.</li>
+    <li><b>Use numbers.</b> &ldquo;Cut report time from 40 seconds to 6&rdquo; says more than &ldquo;improved performance&rdquo;.</li>
+    <li><b>Keep it to two pages for most jobs.</b> Academic and research CVs are longer, because they list publications, grants and teaching.</li>
+    <li><b>Match the posting.</b> Use the same names for skills and tools that the job description uses, as long as they are true.</li>
+  </ol>
+  <h2>What goes on a CV</h2>
+  <p>A profile, education, work experience and skills are the core. Many CVs add publications, research, teaching, languages and a references line. This builder has all of those. It does not ask for a photo, date of birth or marital status: many employers do not expect them, and they can lead to unfair treatment. Check what is normal where you are applying.</p>
+{% else %}
+  <h2>How to build a résumé that gets read</h2>
+  <ol>
+    <li><b>Lead with your most relevant experience.</b> Recruiters skim. Put the roles and results that match the job first.</li>
+    <li><b>Write results, not duties.</b> Start each point with what you did, and add a number where you honestly can.</li>
+    <li><b>Keep it to one page if you can, two at most.</b> Cut old or unrelated roles before you shrink the text.</li>
+    <li><b>Reuse the posting&rsquo;s words.</b> If the job asks for &ldquo;stakeholder management&rdquo; and you have done it, say so in those words.</li>
+    <li><b>Keep the layout plain.</b> Fancy columns, icons and photos can confuse the software that reads résumés.</li>
+  </ol>
+  <h2>What &ldquo;ATS-friendly&rdquo; means here</h2>
+  <p>Many employers run applications through an applicant tracking system (ATS) before a person looks at them. The three layouts here are one column with standard section headings, real selectable text, and no tables, icons or photos. The PDF contains text, not a picture of text, and the Word file uses real headings and bullet lists. That helps, but no tool can promise how every employer&rsquo;s system will read a file.</p>
+{% endif %}
+  <h2>The three layouts</h2>
+  <ul>
+    <li><b>Classic</b>: centred name and ruled headings. The safe choice for most jobs.</li>
+    <li><b>Modern</b>: left-aligned name and coloured headings. Suits tech, product and design roles.</li>
+    <li><b>Compact</b>: serif type and tighter spacing, to fit a longer career on fewer pages.</li>
+  </ul>
+
+  <div class="rb-cta">
+    <b>Applying for a specific job?</b>
+    <p style="margin:6px 0 10px">{{ PLATFORM }} finds openings straight from company career pages. Members can tailor their {{ 'CV' if cv else 'résumé' }} to a posting, with a check against what they actually wrote.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> <a href="/pricing" style="margin-left:10px">See plans</a>
+  </div>
+
+  <h2>Questions</h2>
+  <details><summary>Is it really free?</summary><p>Yes. You do not need an account, the files have no watermark, and you can download as often as you like. To stop abuse there is a limit on how fast you can make files.</p></details>
+  <details><summary>Do you keep my {{ 'CV' if cv else 'résumé' }}?</summary><p>No. Your draft is saved in your own browser so you can come back to it. Our server builds the preview and the file when you ask, and does not keep a copy. Clearing your browser data, or using the &ldquo;Clear everything&rdquo; button, removes the draft.{% if ai_on %} If you use AI help, the text of the section you ask about is sent to an AI service to write the suggestion, so leave out anything you would not want shared.{% endif %}</p></details>
+  {% if ai_on %}<details><summary>What does AI help do?</summary><p>It can write a first draft of your {{ 'profile' if cv else 'summary' }} from what you have entered, and it can reword the points under a job so they are clearer and start with strong verbs. It is told not to invent facts. Where a number would help it writes a prompt like [ADD: how many users] for you to fill in, and it flags any number, name or tool that is not already in your document. It is still a draft: read every line, and keep only what is true.</p></details>{% endif %}
+  <details><summary>Which layout should I choose?</summary><p>Use Classic if you are unsure. Choose Modern for a design or tech role, and Compact if your experience will not fit on the page otherwise.</p></details>
+  <details><summary>Can I edit the Word file?</summary><p>Yes. It uses real headings, bullet lists and a tab stop for dates, so it edits like a normal document.</p></details>
+  <details><summary>{{ 'What is the difference between a CV and a résumé?' if cv else 'What is the difference between a résumé and a CV?' }}</summary>
+    <p>A résumé is a short, targeted summary of your experience, usually one or two pages. A CV is the standard application document in many countries, and in academia a longer record of your education, research and publications. Use the {{ 'résumé' if cv else 'CV' }} builder if you need the other one: <a href="{{ other_path }}">{{ 'résumé builder' if cv else 'CV builder' }}</a>.</p></details>
+</div>
+{% endblock %}

@@ -200,7 +200,7 @@ def job_sitemap_files(job_count: int) -> list[str]:
 
 
 # The pages with a fixed address that belong in the sitemap. Everything private is left out on purpose.
-STATIC_PAGES = ("/", "/jobs", "/pricing", "/companies", "/salaries", "/refunds", "/blog", "/alternatives")
+STATIC_PAGES = ("/", "/jobs", "/pricing", "/companies", "/salaries", "/refunds", "/blog", "/alternatives", "/free-resume-builder", "/free-cv-builder")
 
 
 def article_data(headline: str, description: str, path: str, published: str, updated: str) -> dict:

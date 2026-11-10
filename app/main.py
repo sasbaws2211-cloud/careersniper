@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import hmac
+import json
 import logging
 import os
 import re
@@ -11,7 +12,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlparse
 
 import bcrypt
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
@@ -32,7 +33,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail, applylink
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail, applylink, builder, builder_ai
 from . import search as search_mod
 from . import seo as seo_mod
 from . import content as content_mod
@@ -1972,6 +1973,98 @@ async def following_unsub(token: str, request: Request, db: AsyncSession = Depen
 
 
 # ---------------------------------------------------------------- salary pages (public)
+# ---------------------------------------------------------------- free résumé and CV builder (public, no account, nothing stored)
+BUILDER_PAGES = {"resume": "/free-resume-builder", "cv": "/free-cv-builder"}
+
+
+def _builder_page(request: Request, mode: str):
+    return templates.TemplateResponse(request, "builder.html", dict(
+        org=None, mode=mode, path=BUILDER_PAGES[mode], layouts=docfmt.TEMPLATES, sample=builder.SAMPLE[mode], other_path=BUILDER_PAGES["cv" if mode == "resume" else "resume"]))
+
+
+@app.get("/free-resume-builder", response_class=HTMLResponse)
+async def resume_builder_page(request: Request):
+    return _builder_page(request, "resume")
+
+
+@app.get("/free-cv-builder", response_class=HTMLResponse)
+async def cv_builder_page(request: Request):
+    return _builder_page(request, "cv")
+
+
+async def _builder_payload(request: Request) -> dict:
+    """The JSON body of a builder request, or an error response. The content is never logged and never stored."""
+    body = await request.body()
+    if len(body) > builder.MAX_JSON_BYTES:
+        raise HTTPException(413, "That is too much text for one document.")
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(400, "The request is not valid JSON.")
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "The request is not in the form we expect.")
+    return payload
+
+
+def _builder_failed(exc: Exception):
+    """An unexpected failure while building: only the kind of error is logged, never the request, so a résumé cannot end up in a log or an error report."""
+    logging.getLogger("careersniper").error("résumé builder failed: %s", type(exc).__name__)
+    return JSONResponse({"error": "Something went wrong while building your document. Please try again."}, status_code=500)
+
+
+@app.post("/api/builder/preview")
+async def builder_preview(request: Request):
+    throttle(request, "builder-preview", 240, 300)
+    p = await _builder_payload(request)
+    try:
+        html = builder.render_html(p.get("data"), str(p.get("mode") or ""), docfmt.template_name(str(p.get("template") or "")))
+    except builder.BuilderError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except Exception as e:  # noqa: BLE001
+        return _builder_failed(e)
+    return JSONResponse({"html": str(html)}, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/builder/ai")
+async def builder_ai_help(request: Request):
+    """AI help for the free builder (better points for a job, or a written summary). Open to anyone, so it is limited three ways, and it never logs the text."""
+    if not await ai.enabled():
+        return JSONResponse({"error": "AI help is not available right now."}, status_code=503)
+    origin = request.headers.get("origin")
+    if origin and urlparse(origin).netloc != request.headers.get("host", ""):
+        return JSONResponse({"error": "That request did not come from this site."}, status_code=403)
+    throttle(request, "builder-ai", config.BUILDER_AI_PER_IP_HOUR, 3600)
+    throttle(request, "builder-ai-day", config.BUILDER_AI_PER_IP_DAY, 86400)
+    if not security.limiter.hit("builder-ai-all", config.BUILDER_AI_ALL_HOUR, 3600):
+        return JSONResponse({"error": "AI help is very busy right now. Please try again in a little while."}, status_code=503, headers={"Retry-After": "600"})
+    p = await _builder_payload(request)
+    try:
+        out = await builder_ai.run(p.get("data"), str(p.get("mode") or ""), str(p.get("kind") or ""), str(p.get("section") or "experience"), p.get("index", 0))
+    except builder.BuilderError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except ai.AIError as e:
+        return JSONResponse({"error": str(e)}, status_code=e.status if 400 <= e.status < 600 else 502)
+    except Exception as e:  # noqa: BLE001
+        return _builder_failed(e)
+    return JSONResponse(out, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/builder/download")
+async def builder_download(request: Request):
+    throttle(request, "builder-download", 40, 600)
+    p = await _builder_payload(request)
+    try:
+        body, name, media = builder.make_file(p.get("data"), str(p.get("mode") or ""), str(p.get("format") or ""),
+                                              docfmt.template_name(str(p.get("template") or "")), str(p.get("paper") or ""))
+    except builder.BuilderError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except Exception as e:  # noqa: BLE001
+        return _builder_failed(e)
+    response = _download(body, name, media)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/salaries", response_class=HTMLResponse)
 async def salaries_page(request: Request, db: AsyncSession = Depends(get_db), q: str = ""):
     return templates.TemplateResponse(request, "salaries.html", dict(
