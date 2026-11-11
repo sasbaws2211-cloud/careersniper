@@ -1,0 +1,85 @@
+{% extends "_tenant.html" %}
+{% set seo = {
+  'title': brand_title('Resume and Job Match Checker', PLATFORM),
+  'description': clip('Paste your résumé and a job description to see which of the job’s keywords you cover and which are missing, with checks on your résumé. Free, no sign-up.'),
+  'canonical': '/tools/resume-job-match',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free tools', '/tools'), ('Résumé and job match checker', '/tools/resume-job-match')]),
+    {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Résumé and job match checker by ' ~ PLATFORM, 'url': abs_url('/tools/resume-job-match'),
+     'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Any', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+  ]
+} %}
+{% block head %}{% include "_tool_css.html" %}
+<style>
+  .tm-bar { height: 14px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 8px 0 4px; }
+  .tm-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #22c55e); border-radius: 999px; }
+  .tm-score { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .tm-score b { font-size: 2.4rem; letter-spacing: -0.03em; color: #1d4ed8; }
+  .tm-key { font-weight: 700; }
+  .tm-checks { list-style: none; padding: 0; margin: 8px 0 0; }
+  .tm-checks li { padding: 6px 0 6px 26px; position: relative; border-bottom: 1px solid #f1f5f9; }
+  .tm-checks li::before { position: absolute; left: 2px; font-weight: 800; }
+  .tm-checks .c-ok::before { content: "\2713"; color: #15803d; } .tm-checks .c-warn::before { content: "!"; color: #b45309; } .tm-checks .c-bad::before { content: "\2717"; color: #b91c1c; }
+  .tm-ai { border: 1px solid #c7d2fe; background: #eef2ff; border-radius: 12px; padding: 14px 16px; margin: 16px 0; }
+  .tm-ai[hidden] { display: none; } .tm-tip { background: #fff; border: 1px solid #e0e7ff; border-radius: 8px; padding: 8px 12px; margin: 0 0 8px; } .tm-tip b { color: #4338ca; }
+  .tm-imp { font-weight: 700; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Résumé and job match checker</h1>
+  <div class="muted">See which of a job&rsquo;s keywords your résumé covers, and which it is missing.</div>
+</div>
+<div class="tl-wrap">
+  <form class="tl-form" method="post" action="/tools/resume-job-match">
+    {% if error %}<p class="tl-err">{{ error }}</p>{% endif %}
+    <div class="tl-field"><label for="resume">Your résumé (paste the text)</label><textarea id="resume" name="resume" rows="10" maxlength="{{ max_chars }}" required placeholder="Paste your résumé here">{{ resume }}</textarea></div>
+    <div class="tl-field"><label for="job">The job description (paste the text)</label><textarea id="job" name="job" rows="10" maxlength="{{ max_chars }}" required placeholder="Paste the full job description here">{{ job }}</textarea></div>
+    <div class="tl-actions"><button type="submit">Check the match</button><span class="tl-hint">Free, no sign-up. We do not keep what you paste.</span></div>
+  </form>
+
+  {% if result %}
+  <div class="tl-result {{ 'tl-ok' if result.score >= 70 else 'tl-warn' if result.score >= 45 else 'tl-bad' }}" id="result">
+    <div class="tm-score"><b>{{ result.score }}%</b><span class="tm-key">{{ result.label }}</span><span class="muted">of the job&rsquo;s {{ result.keywords }} key words and phrases appear in your résumé</span></div>
+    <div class="tm-bar" role="img" aria-label="{{ result.score }} percent match"><i style="width: {{ result.score }}%"></i></div>
+    <p class="tl-hint">This measures overlap of wording, which is what applicant-tracking systems and recruiter searches often look at. It is not a judgement of whether you should get the job.</p>
+
+    <h2>Missing from your résumé</h2>
+    {% if result.missing %}
+    <ul class="tl-pills">{% for m in result.missing %}<li class="tl-pill-miss{{ ' tm-imp' if m.important }}" title="{{ 'Important: ' if m.important }}mentioned {{ m.count }} time{{ '' if m.count == 1 else 's' }} in the job description">{{ m.text }}</li>{% endfor %}</ul>
+    <p class="tl-hint">Bold words matter most to this job. Add one only if it is true: put it where you really used it, in the job&rsquo;s own wording.</p>
+    {% else %}<p>Nothing is missing: your résumé covers every key word we found.</p>{% endif %}
+
+    <h2>Already in your résumé</h2>
+    {% if result.found %}<ul class="tl-pills">{% for f in result.found %}<li class="tl-pill-ok{{ ' tm-imp' if f.important }}">{{ f.text }}</li>{% endfor %}</ul>{% else %}<p>None of the job&rsquo;s key words appear yet.</p>{% endif %}
+
+    {% if ai_on and result.missing %}
+    <div class="tm-ai" id="tm-ai" data-ai-url="/api/tools/match-tips">
+      <b>Want advice on the gaps?</b>
+      <p style="margin:4px 0 8px">AI can suggest what you could do about each missing keyword. <span class="tl-hint">This sends your résumé and the job description to an AI service. It is told never to suggest claiming something your résumé does not show.</span></p>
+      <button type="button" id="tm-ai-btn">Get AI advice</button>
+      <div id="tm-ai-out" aria-live="polite" style="margin-top:10px"></div>
+    </div>
+    {% endif %}
+
+    <h2>Checks on your résumé</h2>
+    <ul class="tm-checks">{% for c in result.checks %}<li class="c-{{ c.status }}">{{ c.text }}</li>{% endfor %}</ul>
+    <p class="tl-hint">These read your text only, so they cannot judge layout. <a href="/free-resume-builder">Build a clean, one-column résumé</a> with our free builder.</p>
+  </div>
+  {% endif %}
+
+  <h2>How this works</h2>
+  <p>We read the job description and pick out its most important words and phrases: skills, tools and the terms it repeats, giving extra weight to anything under a &ldquo;Requirements&rdquo; heading. Then we check which of them appear in your résumé, treating different forms of a word as the same (&ldquo;managed&rdquo; and &ldquo;managing&rdquo;) and common short forms alike (&ldquo;k8s&rdquo; and &ldquo;Kubernetes&rdquo;).</p>
+  <p>The check is plain text matching, so it is free, instant and gives the same answer every time. Treat it as a prompt to look again, not as a verdict. Never add a skill you do not have just to raise the score.</p>
+
+  <div class="tl-cta"><b>Applying to many jobs?</b><p style="margin:6px 0 10px">{{ PLATFORM }} finds openings straight from company career pages, and members can have their résumé tailored to each posting and checked against what they actually wrote.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> <a href="/pricing" style="margin-left:10px">See plans</a></div>
+
+  <h2>Questions</h2>
+  <details><summary>Do you keep my résumé or the job description?</summary><p>No. They are used to work out the answer and are not saved{% if ai_on %}. If you ask for AI advice, the two texts are sent to an AI service to write it, so leave out anything you would not want shared{% endif %}.</p></details>
+  <details><summary>What is a good score?</summary><p>Above about 70% means most of the job&rsquo;s wording is already in your résumé. A lower score is common when a job description includes a lot of general wording. What matters more is whether the important, specific skills are covered.</p></details>
+  <details><summary>Does a high score guarantee an interview?</summary><p>No. Employers use many different systems and people decide in many ways. This tells you about wording only.</p></details>
+</div>
+{% if ai_on and result and result.missing %}<script src="/static/tools-match.js?v={{ CSS_V }}" defer></script>{% endif %}
+{% endblock %}

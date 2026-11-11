@@ -1,0 +1,86 @@
+{% extends "_tenant.html" %}
+{% set searched = result is not none or error %}
+{% set seo = {
+  'title': brand_title('Is This Job Still Open? Posting Checker', PLATFORM),
+  'description': clip('Check how old a job posting is, whether it was reposted, and when it was last seen open on the company career page. Paste a link, or a company and title.'),
+  'canonical': '/tools/job-freshness-checker',
+  'robots': 'noindex,follow' if searched else 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free tools', '/tools'), ('Is this job still open?', '/tools/job-freshness-checker')]),
+    {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': 'Job posting freshness checker by ' ~ PLATFORM, 'url': abs_url('/tools/job-freshness-checker'),
+     'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Any', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+  ]
+} %}
+{% block head %}{% include "_tool_css.html" %}
+<style>.tl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } @media (max-width: 760px) { .tl-two { grid-template-columns: 1fr; } }
+  .tl-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; } .tl-facts div { background: rgba(255,255,255,.7); border: 1px solid rgba(15,23,42,.08); border-radius: 10px; padding: 8px 12px; }
+  .tl-facts b { display: block; font-size: .78rem; color: #475569; text-transform: uppercase; letter-spacing: .04em; } .tl-sig-good::marker { content: "\2713  "; color: #15803d; } .tl-sig-warn::marker { content: "!  "; color: #b45309; font-weight: 700; } .tl-sig-bad::marker { content: "\2717  "; color: #b91c1c; }</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Is this job still open?</h1>
+  <div class="muted">Check how old a posting is, whether it was reposted, and when we last saw it open.</div>
+</div>
+<div class="tl-wrap">
+  {% if error %}<p class="tl-err">{{ error }}</p>{% endif %}
+  <div class="tl-two">
+    <form class="tl-form" method="get" action="/tools/job-freshness-checker">
+      <div class="tl-field"><label for="url">Paste the job&rsquo;s link</label><input id="url" name="url" value="{{ url }}" maxlength="600" placeholder="https://jobs.lever.co/company/..." inputmode="url"></div>
+      <p class="tl-hint">The employer&rsquo;s own posting, or a link from a company career page.</p>
+      <div class="tl-actions"><button type="submit">Check this link</button></div>
+    </form>
+    <form class="tl-form" method="get" action="/tools/job-freshness-checker">
+      <div class="tl-field"><label for="company">Company</label><input id="company" name="company" value="{{ company }}" maxlength="120" placeholder="e.g. GitLab"></div>
+      <div class="tl-field"><label for="title">Job title</label><input id="title" name="title" value="{{ title }}" maxlength="120" placeholder="e.g. Backend Engineer"></div>
+      <div class="tl-actions"><button type="submit" class="ghost">Check by name</button></div>
+    </form>
+  </div>
+
+  {% if result is not none %}
+    {% if result.kind == 'found' %}
+    {% set v = result.verdict %}
+    <div class="tl-result {{ {'fresh': 'tl-ok', 'check': 'tl-warn', 'old': 'tl-warn', 'gone': 'tl-bad'}[v.level] }}">
+      <h2>{{ v.headline }}</h2>
+      <p><b>{{ result.job.title }}</b> at {{ result.job.company }}{% if result.job.location %} &middot; {{ result.job.location }}{% endif %}</p>
+      <div class="tl-facts">
+        <div><b>Posted</b>{{ v.posted.strftime('%d %B %Y') if v.posted else 'Not stated' }}{% if v.age_days is not none %} ({{ v.age_days }} days ago){% endif %}</div>
+        <div><b>Last seen open</b>{{ result.job.last_seen.strftime('%d %B %Y') if result.job.last_seen else 'Unknown' }}</div>
+        <div><b>First seen by us</b>{{ result.job.first_seen.strftime('%d %B %Y') if result.job.first_seen else 'Unknown' }}</div>
+        <div><b>Reposted</b>{{ v.reposts ~ (' time' if v.reposts == 1 else ' times') if v.reposts else 'Not that we have seen' }}</div>
+      </div>
+      <ul class="tl-signals">{% for tone, text in v.signals %}<li class="tl-sig-{{ tone }}">{{ text }}</li>{% endfor %}</ul>
+      {% if v.level != 'gone' and result.job.open_here %}<p><a class="btn" href="/jobs/{{ result.job.id }}">Open it on {{ PLATFORM }}</a></p>{% endif %}
+      <p class="tl-hint">These are signals, not proof. A role can be genuine and old, or new and already filled.</p>
+    </div>
+    {% elif result.kind == 'board' %}
+    <div class="tl-result tl-info">
+      <h2>We cannot read {{ result.host }} links</h2>
+      <p>{{ result.host }} copies listings from employers, and we do not read it. Use the company and job title on the right, or find the same job on the company&rsquo;s own career page and paste that link.</p>
+      <p><a href="/tools/employer-page-finder?{{ result.qs }}">Find the employer&rsquo;s own posting</a></p>
+    </div>
+    {% else %}
+    <div class="tl-result tl-bad">
+      <h2>We do not track that posting</h2>
+      <p>We can only check jobs on the career pages we read, and this one is not among them{% if result.by_name %} (or is not open any more, because name matching only looks at open roles){% endif %}. That does not mean anything is wrong with the job.</p>
+      <ul><li>Open the company&rsquo;s own career page and look for the role there.</li><li>Look at the posting date, if it shows one, and be wary of roles posted months ago that are still being advertised.</li><li><a href="/tools/employer-page-finder">Search by company and title</a> to see whether the company has it.</li></ul>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <h2>What we look at</h2>
+  <ul>
+    <li><b>Age.</b> When the employer posted the role. Up to {{ limits.recent }} days is recent; beyond {{ limits.aging }} days many roles have been filled; beyond {{ limits.old }} days a posting is very old.</li>
+    <li><b>Reposting.</b> Whether the role was closed and then posted again. Some companies do this to keep a role looking new, or to keep collecting résumés.</li>
+    <li><b>Last seen open.</b> {{ PLATFORM }} re-reads company career pages regularly. If a role has not been on the page for more than {{ limits.gone }} days, it has probably closed.</li>
+  </ul>
+  <p>We never call a job &ldquo;fake&rdquo;. We cannot see inside a company&rsquo;s hiring, so we show what we can measure and let you decide.</p>
+
+  <div class="tl-cta"><b>Skip the guesswork.</b><p style="margin:6px 0 10px">Every job on {{ PLATFORM }} shows when it was last confirmed open on the company&rsquo;s own career page.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> <a href="/pricing" style="margin-left:10px">See plans</a></div>
+
+  <h2>Questions</h2>
+  <details><summary>What is a &ldquo;ghost job&rdquo;?</summary><p>A posting that stays up with no real plan to hire, for example to collect résumés, look busy, or keep a role open for later. It is hard to prove from outside, which is why this tool only reports signals such as age and reposting.</p></details>
+  <details><summary>Why can&rsquo;t you check a LinkedIn or Indeed link?</summary><p>Those sites copy listings from employers. We read the employers&rsquo; own career pages, so we can check the original posting if you give us its link, or the company and title.</p></details>
+  <details><summary>Do you store the link I paste?</summary><p>No. It is used to look up the answer and is not saved to an account.</p></details>
+</div>
+{% endblock %}

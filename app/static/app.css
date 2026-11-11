@@ -109,6 +109,9 @@ header.top .wrap.nav{display:flex;align-items:center;gap:4px;min-height:62px;pad
 .menu-panel a,.menu-panel button{display:block;width:100%;padding:9px 12px;border:0;border-radius:8px;background:none;color:var(--text);font:inherit;font-size:14px;text-align:left;text-decoration:none;cursor:pointer}
 .menu-panel a:hover,.menu-panel button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
 .menu-panel form{margin:4px 0 0;padding-top:4px;border-top:1px solid var(--line)}
+.menu-label{padding:8px 12px 2px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.menu-tools{min-width:270px;max-height:75vh;overflow-y:auto}
+.menu-panel a.menu-all{margin-top:6px;border-top:1px solid var(--line);border-radius:0 0 8px 8px;font-weight:600;color:var(--brand)}
 .menu-who{padding:8px 12px 10px;margin-bottom:4px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}
 .menu-who b{display:block;margin-top:2px;color:var(--text);font-size:13px;font-weight:600;overflow-wrap:anywhere}
 .avatar{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;font-size:15px;font-weight:600;cursor:pointer;user-select:none}

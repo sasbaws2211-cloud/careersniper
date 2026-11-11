@@ -33,7 +33,7 @@ from admin import config as admin_config
 from admin import actions as admin_actions
 from admin.main import app as platform_admin_app
 
-from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail, applylink, builder, builder_ai
+from . import coach as coach_mod, lens as lens_mod, resume_upload, ai, alerts, billing, cache as cache_mod, companies, config, currency, dedupe, follows, interview, letters, lookup as lookup_mod, mailer, match as match_mod, members, onboarding as onboarding_mod, payments, referrals, resume as resume_mod, runtime_settings, salaries, schema, security, tailor, tracker, prepare as prepare_mod, reminders, reports, textfmt, docfmt, funnel, loomail, applylink, builder, builder_ai, tools as tools_mod, remote as remote_mod, freshness as freshness_mod, keywordmatch as keywordmatch_mod, trackersheet
 from . import search as search_mod
 from . import seo as seo_mod
 from . import content as content_mod
@@ -53,6 +53,7 @@ templates = Jinja2Templates(directory=BASE / "templates",
                             context_processors=[lambda r: {"memail": r.session.get("memail"), "ai_on": ai.enabled_cached(), "invited": bool(r.session.get("ref")),
                                                                                     "cur": currency.for_request(r), "approx": currency.approx, "currencies": currency.CURRENCIES}])
 templates.env.filters["ago"] = lambda d: ago(d)
+templates.env.globals.update(TOOL_GROUPS=tools_mod.groups(), TOOL_PATHS=tools_mod.paths())
 templates.env.globals["DOC_CSS"] = docfmt.DOC_CSS      # the look of a résumé or letter on the page, shared with the print route
 templates.env.filters["rich"] = lambda text, limit=None: textfmt.render(text, limit)   # a posting as headings, bullets and paragraphs
 templates.env.globals["progress"] = lambda s: interview.progress(s)
@@ -550,6 +551,14 @@ async def _company_entries(db: AsyncSession) -> list:
     return [(f"/companies/{r['id']}-{r['slug']}", None) for r in rows]
 
 
+REMOTE_KEY = ("global",)     # one cache key for the remote-jobs counts, shared by the pages and the sitemap
+
+
+async def _remote_entries(db: AsyncSession) -> list:
+    regs, ctry = remote_mod.order(await remote_mod.counts(db, feed_query(), REMOTE_KEY))
+    return [(remote_mod.path_of(code), None) for code, _ in [*regs, *ctry]]
+
+
 async def _salary_entries(db: AsyncSession) -> list:
     return [(f"/salaries/{g['slug']}", None) for g in await salaries.index(db)]
 
@@ -570,7 +579,7 @@ async def sitemap_main(db: AsyncSession = Depends(get_db)):
     """One flat sitemap while every address fits in one file (it does for a long time); an index of several files only past that."""
     async def build() -> str:
         jobs = await _job_count(db)
-        fixed = [*_page_entries(), *_content_entries(), *(await _company_entries(db)), *(await _salary_entries(db))]
+        fixed = [*_page_entries(), *(await _remote_entries(db)), *_content_entries(), *(await _company_entries(db)), *(await _salary_entries(db))]
         if seo_mod.fits_in_one_sitemap(len(fixed) + jobs):
             return seo_mod.urlset([*fixed, *(await _job_entries(db, 1))])
         return seo_mod.sitemap_index(["/sitemap-pages.xml", "/sitemap-content.xml", "/sitemap-companies.xml", "/sitemap-salaries.xml", *seo_mod.job_sitemap_files(jobs)])
@@ -578,9 +587,9 @@ async def sitemap_main(db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/sitemap-pages.xml")
-async def sitemap_pages():
+async def sitemap_pages(db: AsyncSession = Depends(get_db)):
     async def build() -> str:
-        return seo_mod.urlset(_page_entries())
+        return seo_mod.urlset([*_page_entries(), *(await _remote_entries(db))])
     return Response(await _cached_sitemap("pages", build), media_type=XML, headers=CACHEABLE)
 
 
@@ -1973,6 +1982,154 @@ async def following_unsub(token: str, request: Request, db: AsyncSession = Depen
 
 
 # ---------------------------------------------------------------- salary pages (public)
+# ---------------------------------------------------------------- the free tools hub
+@app.get("/tools", response_class=HTMLResponse)
+async def tools_hub(request: Request):
+    items = [{"item": {"@type": "ListItem", "position": i, "name": t["title"], "url": seo_mod.absolute(t["path"])}} for i, t in enumerate(tools_mod.TOOLS, 1)]
+    return templates.TemplateResponse(request, "tools_hub.html", dict(org=None, groups=tools_mod.groups(), tool_items=items))
+
+
+# ---------------------------------------------------------------- remote jobs by country
+@app.get("/remote-jobs", response_class=HTMLResponse)
+async def remote_jobs_index(request: Request, db: AsyncSession = Depends(get_db)):
+    counts = await remote_mod.counts(db, feed_query(), REMOTE_KEY)
+    regs, ctry = remote_mod.order(counts)
+    return templates.TemplateResponse(request, "remote_index.html", dict(org=None, remote=remote_mod, regs=regs, countries=ctry, worldwide=counts.get("WORLD", 0)))
+
+
+@app.get("/remote-jobs/{slug}", response_class=HTMLResponse)
+async def remote_jobs_place(slug: str, request: Request, db: AsyncSession = Depends(get_db)):
+    code = remote_mod.code_for(slug)
+    if not code:
+        raise HTTPException(404, "There is no page for that place")
+    if slug != remote_mod.slug_of(code):                                  # another spelling of the address: send it to the one address
+        return RedirectResponse(remote_mod.path_of(code), status_code=301)
+    org = resolve_org(request, db)
+    feed = feed_query(org)
+    total, rows = await search_page(db, org, "", "", False, 0, 0, config.PREVIEW_JOB_LIMIT, flt=Filters.make(remote_from=code))
+    facts = await remote_mod.facts(db, feed, code)
+    counts = await remote_mod.counts(db, feed_query(), REMOTE_KEY)
+    regs, ctry = remote_mod.order(counts)
+    nearby = [kv for kv in [*regs, *ctry] if kv[0] != code][:14]
+    return templates.TemplateResponse(request, "remote_place.html", dict(
+        org=org, remote=remote_mod, code=code, path=remote_mod.path_of(code), total=total, listed=counts.get(code, 0) >= remote_mod.MIN_INDEXED, jobs=rows, facts=facts, nearby=nearby,
+        sib=(await dedupe.locations_for(db, feed_query(org), rows)), reactions={}, why={}, now=datetime.utcnow(), preview_limit=config.PREVIEW_JOB_LIMIT,
+        jobs_ld=[{"@type": "ListItem", "position": i, "name": j.title, "url": seo_mod.absolute(f"/jobs/{j.id}")} for i, j in enumerate(rows[:10], 1)]))
+
+
+# ---------------------------------------------------------------- free tool: is the job on the employer's own career page?
+@app.get("/tools/employer-page-finder", response_class=HTMLResponse)
+async def employer_page_finder(request: Request, db: AsyncSession = Depends(get_db), title: str = "", company: str = "", location: str = ""):
+    title, company, location = (" ".join(x.split())[:120] for x in (title, company, location))
+    result, error = None, ""
+    if title or company:
+        if not (title and company):
+            error = "Enter both the job title and the company."
+        else:
+            throttle(request, "employer-finder", 40, 60)
+            result = await lookup_mod.find(db, title, company, location)
+            base = lookup_mod._base()
+            if result.get("company"):
+                result["company"]["path"] = result["company"]["url"].replace(base, "", 1)
+            if result.get("job"):
+                result["job"]["ago"] = remote_mod.ago(datetime.fromisoformat(result["job"]["confirmed_open"]) if result["job"].get("confirmed_open") else None)
+    return templates.TemplateResponse(request, "tool_finder.html", dict(org=None, title=title, company=company, location=location, result=result, error=error))
+
+
+# ---------------------------------------------------------------- free tool: is this job still open?
+def _fresh_view(job, open_here: bool) -> dict:
+    return {"id": job.id, "title": job.title, "company": job.company_name, "location": job.location or "", "first_seen": job.first_seen, "last_seen": job.last_seen, "open_here": open_here}
+
+
+@app.get("/tools/job-freshness-checker", response_class=HTMLResponse)
+async def job_freshness_checker(request: Request, db: AsyncSession = Depends(get_db), url: str = "", title: str = "", company: str = ""):
+    url, title, company = url.strip()[:freshness_mod.MAX_URL], " ".join(title.split())[:120], " ".join(company.split())[:120]
+    result, error = None, ""
+    if url or title or company:
+        throttle(request, "freshness", 40, 60)
+        if url:
+            clean = freshness_mod.clean_url(url)
+            if not clean:
+                error = "That does not look like a web address. Paste the full link to the job."
+            elif freshness_mod.is_board(clean):
+                result = {"kind": "board", "host": freshness_mod.host_of(clean), "qs": urlencode({"title": title, "company": company}) if title or company else ""}
+            else:
+                job = await freshness_mod.find_by_url(db, clean)
+                result = {"kind": "found", "job": _fresh_view(job, bool(await db.scalar(feed_query().where(Job.id == job.id).with_only_columns(Job.id)))), "verdict": freshness_mod.verdict(job)} if job else {"kind": "unknown", "by_name": False}
+        elif not (title and company):
+            error = "Enter both the company and the job title, or paste the job's link."
+        else:
+            found = await lookup_mod.find(db, title, company, "")
+            job = await db.get(Job, found["job"]["id"]) if found.get("found") == "role" else None
+            result = {"kind": "found", "job": _fresh_view(job, True), "verdict": freshness_mod.verdict(job)} if job else {"kind": "unknown", "by_name": True}
+    return templates.TemplateResponse(request, "tool_freshness.html", dict(
+        org=None, url=url, title=title, company=company, result=result, error=error,
+        limits={"recent": freshness_mod.RECENT_DAYS, "aging": freshness_mod.AGING_DAYS, "old": freshness_mod.OLD_DAYS, "gone": freshness_mod.GONE_AFTER_DAYS}))
+
+
+# ---------------------------------------------------------------- free tool: résumé and job match checker
+def _match_page(request: Request, resume: str = "", job: str = "", result: dict | None = None, error: str = "", status: int = 200):
+    return templates.TemplateResponse(request, "tool_match.html", dict(org=None, resume=resume, job=job, result=result, error=error, max_chars=keywordmatch_mod.MAX_TEXT),
+                                      status_code=status, headers={"Cache-Control": "no-store"} if result or error else {})
+
+
+@app.get("/tools/resume-job-match", response_class=HTMLResponse)
+async def resume_job_match_page(request: Request):
+    return _match_page(request)
+
+
+@app.post("/tools/resume-job-match", response_class=HTMLResponse)
+async def resume_job_match_run(request: Request, resume: str = Form(""), job: str = Form("")):
+    throttle(request, "match-tool", 30, 600)
+    try:
+        result = keywordmatch_mod.analyze(resume, job)
+    except keywordmatch_mod.ToolError as e:
+        return _match_page(request, resume, job, error=str(e), status=422)
+    return _match_page(request, resume, job, result=result)
+
+
+async def _ai_gate(request: Request, name: str):
+    """Open AI help for anyone, so three limits (this visitor per hour and per day, and everyone together). A JSON error response, or None to go ahead."""
+    if not await ai.enabled():
+        return JSONResponse({"error": "AI help is not available right now."}, status_code=503)
+    origin = request.headers.get("origin")
+    if origin and urlparse(origin).netloc != request.headers.get("host", ""):
+        return JSONResponse({"error": "That request did not come from this site."}, status_code=403)
+    throttle(request, name, config.BUILDER_AI_PER_IP_HOUR, 3600)
+    throttle(request, name + "-day", config.BUILDER_AI_PER_IP_DAY, 86400)
+    if not security.limiter.hit("builder-ai-all", config.BUILDER_AI_ALL_HOUR, 3600):
+        return JSONResponse({"error": "AI help is very busy right now. Please try again in a little while."}, status_code=503, headers={"Retry-After": "600"})
+    return None
+
+
+@app.post("/api/tools/match-tips")
+async def match_tips(request: Request):
+    if (blocked := await _ai_gate(request, "match-ai")) is not None:
+        return blocked
+    p = await _builder_payload(request)
+    try:
+        tips = await keywordmatch_mod.tips(str(p.get("resume") or ""), str(p.get("job") or ""))
+    except keywordmatch_mod.ToolError as e:
+        return JSONResponse({"error": str(e)}, status_code=422)
+    except ai.AIError as e:
+        return JSONResponse({"error": str(e)}, status_code=e.status if 400 <= e.status < 600 else 502)
+    except Exception as e:  # noqa: BLE001
+        return _builder_failed(e)
+    return JSONResponse({"tips": tips}, headers={"Cache-Control": "no-store"})
+
+
+# ---------------------------------------------------------------- free tool: the job search tracker spreadsheet
+@app.get("/tools/job-search-tracker", response_class=HTMLResponse)
+async def job_search_tracker_page(request: Request):
+    return templates.TemplateResponse(request, "tool_tracker.html", dict(org=None, columns=[n for n, _ in trackersheet.COLUMNS], statuses=trackersheet.STATUSES, rows=trackersheet.ROWS))
+
+
+@app.get("/tools/job-search-tracker/download")
+async def job_search_tracker_download(request: Request):
+    throttle(request, "tracker-sheet", 60, 600)
+    return _download(trackersheet.build(), trackersheet.FILENAME, trackersheet.MEDIA)
+
+
 # ---------------------------------------------------------------- free résumé and CV builder (public, no account, nothing stored)
 BUILDER_PAGES = {"resume": "/free-resume-builder", "cv": "/free-cv-builder"}
 

@@ -15,6 +15,16 @@
     <label for="nav-toggle" class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></label>
     <nav class="nav-links" aria-label="Main">
       {{ link("/", "Home", path) }}
+      <details class="menu">
+        <summary class="nav-link{% if path.startswith(TOOL_PATHS) %} active{% endif %}">Tools <span class="caret" aria-hidden="true"></span></summary>
+        <div class="menu-panel menu-tools">
+          {% for group, items in TOOL_GROUPS %}
+          <div class="menu-label">{{ group }}</div>
+          {% for t in items %}<a href="{{ t.path }}">{{ t.title }}</a>{% endfor %}
+          {% endfor %}
+          <a class="menu-all" href="/tools">All free tools &rarr;</a>
+        </div>
+      </details>
       {% if signed_in %}
         {{ link("/following", "Following", path) }}
         {{ link("/tracker", "Tracker", path) }}

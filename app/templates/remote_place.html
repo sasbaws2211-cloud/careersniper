@@ -1,0 +1,78 @@
+{% extends "_tenant.html" %}
+{% set indexed = listed %}
+{% set core = remote.heading(code) %}
+{% set seo = {
+  'title': brand_title(core, PLATFORM),
+  'description': clip(('{:,}'.format(total) ~ ' remote jobs open to ' ~ ('people in ' if not remote.is_region(code) else '') ~ remote.place(code) ~ ', from company career pages. See companies hiring, pay and level.') if total else ('Remote jobs open to ' ~ remote.place(code) ~ ' on ' ~ PLATFORM ~ '.')),
+  'canonical': path,
+  'robots': 'index,follow,max-image-preview:large' if indexed else 'noindex,follow',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Remote jobs', '/remote-jobs'), (remote.heading(code), path)]),
+    {'@context': 'https://schema.org', '@type': 'ItemList', 'name': remote.heading(code),
+     'itemListElement': jobs_ld}
+  ]
+} %}
+{% block head %}
+<style>
+  .rj-wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px 40px; }
+  .rj-wrap h2 { font-size: 1.2rem; margin: 28px 0 10px; }
+  .rj-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0 0 18px; }
+  @media (max-width: 720px) { .rj-facts { grid-template-columns: repeat(2, 1fr); } }
+  .rj-facts div { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 16px; text-align: center; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .rj-facts b { display: block; font-size: 1.5rem; color: #1d4ed8; letter-spacing: -0.02em; }
+  .rj-facts span { font-size: .85rem; color: #475569; }
+  .rj-lead { font-size: 1.05rem; line-height: 1.6; color: #334155; margin: 0 0 18px; }
+  .rj-more { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
+  .rj-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .rj-chips a { display: inline-block; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; text-decoration: none; color: #0f172a; font-size: .92rem; }
+  .rj-chips a:hover { border-color: #2563eb; background: #eff6ff; }
+  .rj-wrap p, .rj-wrap li { line-height: 1.6; }
+  .rj-top { columns: 2; column-gap: 28px; padding-left: 1.1em; }
+  @media (max-width: 640px) { .rj-top { columns: 1; } }
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>{{ remote.heading(code) }}</h1>
+  <div class="muted">{% if total %}{{ '{:,}'.format(total) }} open {{ 'role' if total == 1 else 'roles' }} &middot; last confirmed open {{ remote.ago(facts.newest) }}{% else %}Nothing listed right now{% endif %}</div>
+</div>
+<div class="rj-wrap">
+  {% if total %}
+  <div class="rj-facts">
+    <div><b>{{ '{:,}'.format(total) }}</b><span>open roles</span></div>
+    <div><b>{{ facts.companies }}</b><span>{{ 'company' if facts.companies == 1 else 'companies' }} hiring</span></div>
+    <div><b>{{ facts.paid_pct }}%</b><span>state a pay range</span></div>
+    <div><b>{{ facts.visa }}</b><span>offer visa sponsorship</span></div>
+  </div>
+  <p class="rj-lead">{{ '{:,}'.format(total) }} remote {{ 'job' if total == 1 else 'jobs' }} on {{ PLATFORM }} {{ 'is' if total == 1 else 'are' }} open to {{ 'people in ' if not remote.is_region(code) else '' }}{{ remote.place(code) }}.
+    {{ facts.companies }} {{ 'company is' if facts.companies == 1 else 'companies are' }} hiring{% if facts.top_companies %}, including {{ facts.top_companies[:3]|map(attribute=0)|join(', ') }}{% endif %}.
+    {% if facts.paid_pct %}{{ facts.paid_pct }}% state a pay range{% else %}Few state a pay range{% endif %}{% if facts.levels %}, and the most common levels are {{ remote.phrase_levels(facts.levels) }}{% endif %}.
+    {% if facts.direct %}{{ facts.direct }} of them name {{ remote.name_of(code) }} directly; {% endif %}{% if facts.world %}{{ facts.world }} {{ 'is' if facts.world == 1 else 'are' }} open to people anywhere in the world{% endif %}{% if facts.regional %}{% if facts.world %}, and {% endif %}{{ facts.regional }} {{ 'is' if facts.regional == 1 else 'are' }} open to a wider region that includes {{ remote.place(code) }}{% endif %}.</p>
+
+  <div id="jobs">
+  {% for j in jobs %}{% include "_job_card.html" %}{% endfor %}
+  </div>
+  <div class="rj-more">
+    <a class="btn" href="/jobs?remote_from={{ code }}">See all {{ '{:,}'.format(total) }} {{ 'role' if total == 1 else 'roles' }} &rarr;</a>
+    <span class="muted">The free preview shows the first {{ preview_limit }}. A plan unlocks every role, the filters and the apply links.</span>
+  </div>
+
+  {% if facts.top_companies|length > 1 %}
+  <h2>Companies hiring</h2>
+  <ul class="rj-top">{% for name, n in facts.top_companies %}<li>{{ name }} <span class="muted">({{ n }})</span></li>{% endfor %}</ul>
+  {% endif %}
+  {% else %}
+  <p class="rj-lead">No remote jobs are open to {{ 'people in ' if not remote.is_region(code) else '' }}{{ remote.place(code) }} right now. Worldwide roles are open to everyone, so <a href="{{ remote.path_of('WORLD') }}">start there</a>, or look at the places below.</p>
+  {% endif %}
+
+  <h2>How we decide a job is open to {{ remote.place(code) }}</h2>
+  <p>We read the location the employer gives. A job counts as open to {{ remote.place(code) }} when it names {{ 'that place' if remote.is_region(code) else 'your country' }}, {{ 'a place inside it, ' if remote.is_region(code) else 'a region that includes it, ' }}or says you can work from anywhere. A post that only says &ldquo;Remote&rdquo; names no place, so it is not matched to any country. Some employers also limit hiring by tax or legal rules the post does not mention, so check the job page before you apply.</p>
+
+  <h2>Other places</h2>
+  <ul class="rj-chips">
+    {% for c, n in nearby %}<li><a href="{{ remote.path_of(c) }}">{{ remote.name_of(c) }} ({{ '{:,}'.format(n) }})</a></li>{% endfor %}
+    <li><a href="/remote-jobs">All places &rarr;</a></li>
+  </ul>
+  <p class="muted" style="margin-top:22px;font-size:.88rem">Counts are distinct listings on {{ PLATFORM }} today. Looking for something specific? Use the search on the <a href="/">home page</a>, or try our <a href="/tools">other free tools</a>.</p>
+</div>
+{% endblock %}

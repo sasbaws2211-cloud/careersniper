@@ -1,0 +1,74 @@
+{% extends "_tenant.html" %}
+{% set searched = result is not none or error %}
+{% set seo = {
+  'title': brand_title("Find the Employer's Own Job Posting", PLATFORM),
+  'description': clip("Saw a job on LinkedIn or Indeed? Enter the title and company to check whether the employer has it on its own career page, and when we last saw it open."),
+  'canonical': '/tools/employer-page-finder',
+  'robots': 'noindex,follow' if searched else 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free tools', '/tools'), ("Employer's own posting", '/tools/employer-page-finder')]),
+    {'@context': 'https://schema.org', '@type': 'WebApplication', 'name': "Employer's own posting finder by " ~ PLATFORM, 'url': abs_url('/tools/employer-page-finder'),
+     'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Any', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+  ]
+} %}
+{% block head %}{% include "_tool_css.html" %}{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Find the employer&rsquo;s own job posting</h1>
+  <div class="muted">Saw a job on LinkedIn or Indeed? Check whether the company has it on its own career page.</div>
+</div>
+<div class="tl-wrap">
+  <form class="tl-form" method="get" action="/tools/employer-page-finder">
+    {% if error %}<p class="tl-err">{{ error }}</p>{% endif %}
+    <div class="tl-grid">
+      <div class="tl-field"><label for="title">Job title</label><input id="title" name="title" value="{{ title }}" maxlength="120" required placeholder="e.g. Backend Engineer"></div>
+      <div class="tl-field"><label for="company">Company</label><input id="company" name="company" value="{{ company }}" maxlength="120" required placeholder="e.g. GitLab"></div>
+      <div class="tl-field"><label for="location">Location (optional)</label><input id="location" name="location" value="{{ location }}" maxlength="120" placeholder="e.g. United Kingdom"></div>
+    </div>
+    <div class="tl-actions"><button type="submit">Check the employer&rsquo;s page</button><span class="tl-hint">Free. Nothing is saved.</span></div>
+  </form>
+
+  {% if result is not none %}
+    {% if result.found == 'role' %}
+    <div class="tl-result tl-ok">
+      <h2>Yes, it looks like the employer has this role</h2>
+      <p><b>{{ result.job.title }}</b>{% if result.job.location %} &middot; {{ result.job.location }}{% endif %} at <a href="{{ result.company.path }}">{{ result.company.name }}</a>.
+        We last saw it open {{ result.job.ago }}. It comes straight from the company&rsquo;s own career page.</p>
+      <p><a class="btn" href="/jobs/{{ result.job.id }}">Open the job on {{ PLATFORM }}</a></p>
+      <p class="tl-hint">We match on company and job title, so check that the location and level fit the role you saw. {{ PLATFORM }} members get the employer&rsquo;s apply link on the job page.</p>
+    </div>
+    {% elif result.found == 'similar' %}
+    <div class="tl-result tl-info">
+      <h2>No exact match, but {{ result.company.name }} has similar roles</h2>
+      <p>We could not find &ldquo;{{ title }}&rdquo; on <a href="{{ result.company.path }}">{{ result.company.name }}&rsquo;s</a> career page. These are the closest roles it has open:</p>
+      <ul>{% for j in result.similar %}<li><a href="/jobs/{{ j.id }}">{{ j.title }}</a>{% if j.location %} <span class="muted">&middot; {{ j.location }}</span>{% endif %}</li>{% endfor %}</ul>
+      <p class="tl-hint">The role you saw may have closed, be listed under another name, or not be on the company&rsquo;s own page.</p>
+    </div>
+    {% elif result.found == 'company' %}
+    <div class="tl-result tl-warn">
+      <h2>{{ result.company.name }} is on {{ PLATFORM }}, but not this role</h2>
+      <p>{{ result.company.name }} has {{ result.company.open }} open {{ 'role' if result.company.open == 1 else 'roles' }} on its own career page, and none looks like &ldquo;{{ title }}&rdquo;. <a href="{{ result.company.path }}">See what it is hiring for</a>.</p>
+      <p class="tl-hint">If the posting you saw is recent, it may not have reached the company&rsquo;s career page yet. If it is old, it may have been filled.</p>
+    </div>
+    {% else %}
+    <div class="tl-result tl-bad">
+      <h2>We could not find that company</h2>
+      <p>&ldquo;{{ company }}&rdquo; is not one of the career pages we read, or the name is spelled differently. Try the company&rsquo;s shorter name, or look on its own website under Careers or Jobs.</p>
+      <p class="tl-hint">We cover companies whose career pages use common job-board systems. A company with a custom careers page may not be included.</p>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <h2>How it works</h2>
+  <p>Job boards like LinkedIn and Indeed often repeat jobs that employers publish on their own career pages. Enter the title and company, and we look for the same role among the openings we read straight from that company&rsquo;s career page. If it is there, you can apply on the employer&rsquo;s own site instead of through a middleman, and you can see when we last saw the role open.</p>
+  <p>We are careful rather than generous: a company name has to match, and a role is only called a match when the title is close. When we are not sure, we say so and show the closest roles instead.</p>
+
+  <div class="tl-cta"><b>Want every opening in one place?</b><p style="margin:6px 0 10px">{{ PLATFORM }} reads thousands of company career pages, so you can search them all, filter by pay and country, and apply on the employer&rsquo;s own site.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> <a href="/pricing" style="margin-left:10px">See plans</a></div>
+
+  <h2>Questions</h2>
+  <details><summary>Why would the employer&rsquo;s page be better?</summary><p>You apply directly to the company, the posting is the original, and it usually shows whether the role is still open. Popular board listings can also be reposted or out of date.</p></details>
+  <details><summary>It says it could not find the company. Does that mean the job is fake?</summary><p>No. It only means the company is not one of the career pages we read. Check the company&rsquo;s own website.</p></details>
+  <details><summary>Do you store what I type?</summary><p>No. The title and company are used to look up the answer and are not saved to an account.</p></details>
+</div>
+{% endblock %}

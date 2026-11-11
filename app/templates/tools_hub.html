@@ -1,0 +1,49 @@
+{% extends "_tenant.html" %}
+{% set seo = {
+  'title': brand_title('Free Job Search Tools', PLATFORM),
+  'description': clip('Free tools for job seekers: a résumé and CV builder, a résumé and job match checker, remote jobs by country, a posting freshness check and a tracker.'),
+  'canonical': '/tools',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free tools', '/tools')]),
+    {'@context': 'https://schema.org', '@type': 'ItemList', 'name': 'Free job search tools by ' ~ PLATFORM,
+     'itemListElement': tool_items|map(attribute='item')|list}
+  ]
+} %}
+{% block head %}
+<style>
+  .th-group { max-width: 980px; margin: 0 auto 30px; padding: 0 16px; }
+  .th-group h2 { font-size: 1.15rem; margin: 0 0 12px; color: #0f172a; text-transform: uppercase; letter-spacing: .05em; }
+  .th-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .th-card { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px;
+             text-decoration: none; color: inherit; box-shadow: 0 1px 3px rgba(15, 23, 42, .08); }
+  .th-card:hover { border-color: #2563eb; box-shadow: 0 6px 18px rgba(37, 99, 235, .15); }
+  .th-card b { font-size: 1.05rem; color: #0f172a; }
+  .th-card span { color: #475569; line-height: 1.5; font-size: .95rem; }
+  .th-card .go { font-style: normal; font-weight: 700; color: #1d4ed8; margin-top: 4px; }
+  .th-ai { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-size: .72rem; font-weight: 700; vertical-align: middle; }
+  .th-note { max-width: 980px; margin: 8px auto 40px; padding: 0 16px; color: #64748b; font-size: .9rem; line-height: 1.55; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Free job search tools</h1>
+  <div class="muted">Everything here is free to use. Most need no account.{% if ai_on %} Tools marked AI can use it for extra help.{% endif %}</div>
+</div>
+{% for group, items in groups %}
+<section class="th-group" aria-labelledby="g-{{ loop.index }}">
+  <h2 id="g-{{ loop.index }}">{{ group }}</h2>
+  <div class="th-cards">
+    {% for t in items %}
+    <a class="th-card" href="{{ t.path }}">
+      <b>{{ t.title }}{% if ai_on and t.ai %}<span class="th-ai">AI help</span>{% endif %}</b>
+      <span>{{ t.blurb }}</span>
+      <i class="go">Open &rarr;</i>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+<p class="th-note">These tools are made by {{ PLATFORM }}, which finds jobs straight from company career pages. <a href="/jobs">Browse jobs</a> or <a href="/pricing">see plans</a> if you want the full job board with apply links.
+  Where a tool sends text to an AI service, the page says so before you use it.</p>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "_tenant.html" %}
+{% set seo = {
+  'title': brand_title('Remote Jobs by Country', PLATFORM),
+  'description': clip('Remote jobs that are really open to people in your country, not just "remote". Pick a country or region to see roles, companies hiring and pay.'),
+  'canonical': '/remote-jobs',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Remote jobs', '/remote-jobs')])]
+} %}
+{% block head %}
+<style>
+  .rj-wrap { max-width: 900px; margin: 0 auto; padding: 0 16px 40px; }
+  .rj-wrap h2 { font-size: 1.2rem; margin: 28px 0 10px; }
+  .rj-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .rj-chips a { display: inline-flex; gap: 8px; align-items: baseline; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; text-decoration: none; color: #0f172a; font-weight: 600; }
+  .rj-chips a:hover { border-color: #2563eb; background: #eff6ff; }
+  .rj-chips small { color: #64748b; font-weight: 500; }
+  .rj-wrap p, .rj-wrap li { line-height: 1.6; }
+  .rj-hero a.big { display: inline-block; margin-top: 8px; font-weight: 700; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero rj-hero">
+  <h1>Remote jobs by country</h1>
+  <div class="muted">Many &ldquo;remote&rdquo; jobs can only be done from certain countries. Pick yours to see the ones that are really open to you.</div>
+</div>
+<div class="rj-wrap">
+  {% if worldwide %}
+  <p><a class="big" href="{{ remote.path_of('WORLD') }}">{{ '{:,}'.format(worldwide) }} worldwide remote jobs &rarr;</a> <span class="muted">open to people anywhere</span></p>
+  {% endif %}
+
+  {% if regs %}
+  <h2>By region</h2>
+  <ul class="rj-chips">{% for code, n in regs if code != 'WORLD' %}<li><a href="{{ remote.path_of(code) }}">{{ remote.name_of(code) }} <small>{{ '{:,}'.format(n) }}</small></a></li>{% endfor %}</ul>
+  {% endif %}
+
+  <h2>By country</h2>
+  {% if countries %}
+  <ul class="rj-chips">{% for code, n in countries %}<li><a href="{{ remote.path_of(code) }}">{{ remote.name_of(code) }} <small>{{ '{:,}'.format(n) }}</small></a></li>{% endfor %}</ul>
+  {% else %}
+  <p class="muted">No country has enough remote roles listed right now. <a href="/jobs?remote=1">Browse all remote jobs</a>.</p>
+  {% endif %}
+
+  <h2>How we decide a remote job is open to you</h2>
+  <p>A job post that says only &ldquo;Remote&rdquo; does not tell you where you can work from, and many are limited by tax, legal or time-zone rules. We read the location the employer gives. A job counts as open to your country when it names your country, a region that includes it (such as Europe or Africa), or says you can work from anywhere.</p>
+  <p>A post that only says &ldquo;Remote&rdquo; and names no place is not matched to any country, so it will not appear on these pages. That keeps the lists honest, but it also means a few jobs that would accept you are left out. Counts are numbers of distinct listings on {{ PLATFORM }} today, not estimates.</p>
+
+  <h2>Not sure where to start?</h2>
+  <p>Use the search on the <a href="/">home page</a> to type a job title and choose where you live, or open the <a href="/jobs">job board</a> and use the &ldquo;Remote jobs open to&rdquo; filter. See also <a href="/tools">our other free tools</a>.</p>
+</div>
+{% endblock %}

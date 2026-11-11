@@ -1,0 +1,59 @@
+{% extends "_tenant.html" %}
+{% set seo = {
+  'title': brand_title('Free Job Search Tracker Spreadsheet', PLATFORM),
+  'description': clip('Download a free job application tracker for Excel or Google Sheets, with a status list, follow-up reminders and a summary that updates itself. No sign-up.'),
+  'canonical': '/tools/job-search-tracker',
+  'robots': 'index,follow,max-image-preview:large',
+  'jsonld': [
+    breadcrumbs([(PLATFORM, '/'), ('Free tools', '/tools'), ('Job search tracker spreadsheet', '/tools/job-search-tracker')]),
+    {'@context': 'https://schema.org', '@type': 'SoftwareApplication', 'name': 'Job search tracker spreadsheet by ' ~ PLATFORM, 'url': abs_url('/tools/job-search-tracker'),
+     'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Excel, Google Sheets', 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'USD'}}
+  ]
+} %}
+{% block head %}{% include "_tool_css.html" %}
+<style>
+  .tt-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; border: 1px solid #cbd5e1; display: block; overflow-x: auto; white-space: nowrap; }
+  .tt-table th { background: #1d4ed8; color: #fff; text-align: left; padding: 8px 12px; font-weight: 700; }
+  .tt-table td { padding: 7px 12px; border-top: 1px solid #e2e8f0; color: #94a3b8; }
+  .tt-dl { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 18px 0; }
+</style>
+{% endblock %}
+{% block body %}
+<div class="hero">
+  <h1>Free job search tracker</h1>
+  <div class="muted">A spreadsheet to keep every application, follow-up and contact in one place. Works in Excel and Google Sheets.</div>
+</div>
+<div class="tl-wrap">
+  <div class="tt-dl">
+    <a class="btn" href="/tools/job-search-tracker/download" download>Download the tracker (.xlsx)</a>
+    <span class="tl-hint">Free. No sign-up, no email needed.</span>
+  </div>
+
+  <table class="tt-table" aria-label="The columns in the tracker">
+    <thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody><tr>{% for c in columns %}<td>&hellip;</td>{% endfor %}</tr></tbody>
+  </table>
+
+  <h2>What is in it</h2>
+  <ul>
+    <li><b>An Applications sheet</b> with a row for each job: company, title, link, where you found it, the date you applied, the next step, who you spoke to and your notes.</li>
+    <li><b>A status list</b> on every row: {{ statuses|join(', ') }}. Pick from the list instead of typing.</li>
+    <li><b>Follow-up reminders.</b> A follow-up date that has arrived turns yellow while the job is still Applied or Interviewing.</li>
+    <li><b>Days since applied</b> is worked out for you.</li>
+    <li><b>A Summary sheet</b> that counts jobs by status and shows how many applications lead to interviews. It updates by itself.</li>
+    <li><b>A short guide</b> on the last sheet, with tips on following up.</li>
+  </ul>
+  <p>There are no macros and nothing to install. Room for {{ rows }} jobs is set up, and you can add more rows by copying the last one down.</p>
+
+  <h2>Using it in Google Sheets</h2>
+  <p>Open Google Sheets, choose File, then Import, then Upload, and select the file. The status list, the date formats and the formulas carry over.</p>
+
+  <div class="tl-cta"><b>Rather not use a spreadsheet?</b><p style="margin:6px 0 10px">{{ PLATFORM }} has a built-in tracker: when you apply to a job through us, it is added for you and moves through the same stages.</p>
+    <a class="btn" href="/jobs">Browse jobs</a> <a href="/tracker" style="margin-left:10px">Open the tracker</a></div>
+
+  <h2>Questions</h2>
+  <details><summary>Is it really free?</summary><p>Yes. There is nothing to sign up for and no email address to give.</p></details>
+  <details><summary>Does it work offline?</summary><p>Yes. It is a normal spreadsheet file. Your data stays in your own file; we never see it.</p></details>
+  <details><summary>How often should I follow up?</summary><p>A common rule is about a week after applying, and again a week later. After that, move on and keep a note so you do not chase the same job twice.</p></details>
+</div>
+{% endblock %}
