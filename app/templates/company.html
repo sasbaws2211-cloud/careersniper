@@ -76,9 +76,9 @@
   <div class="paywall-cta">
     <div class="big">{{ total - jobs|length }} more open role{{ '' if (total - jobs|length) == 1 else 's' }} at {{ company.name }}</div>
     <p class="muted">Subscribe to see every role and apply straight on their career page.</p>
-    <a class="btn" href="/checkout?plan=pass" style="background:transparent;color:inherit;border:1px solid #94a3b8">3 days &mdash; $3</a>
-    <a class="btn" href="/checkout?plan=weekly" style="margin-left:8px">Weekly &mdash; $7</a>
-    <a class="btn" href="/checkout?plan=monthly" style="background:#111;margin-left:8px">Monthly &mdash; $20</a>
+    <a class="btn" href="/checkout?plan=pass" style="background:#111">Get the 3-day pass &mdash; $3</a>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">Pay once, no renewal.</p>
+    <p class="muted" style="font-size:13px;margin:6px 0 0">Searching longer? <a href="/checkout?plan=monthly">Monthly &mdash; $20</a> &middot; <a href="/checkout?plan=weekly">Weekly &mdash; $7</a> &middot; <a href="/pricing">All plans</a></p>
   </div>
   {% endif %}
   {% if has_access and pages > 1 %}
