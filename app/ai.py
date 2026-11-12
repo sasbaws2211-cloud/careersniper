@@ -309,11 +309,11 @@ async def daily_limit(db: AsyncSession, member: Member) -> int | None:
     return 0
 
 
-async def free_trials() -> int:
-    return int(_number((await overrides()), "ai_free_requests", config.AI_FREE_REQUESTS))
+async def daily_requests() -> int:
+    """AI requests a day for a member without a paid plan."""
+    return int(_number((await overrides()), "ai_daily_requests", config.AI_DAILY_REQUESTS))
 
 
-FREE_TOOLS = {"resume_coach", "match_profile"}     # the only AI a member without a plan may use: the fit check, and reading a résumé's job titles
 FREE_PREFIX = "free:"      # calls made on the member's behalf at no charge (reading a résumé's profile); logged, but outside the budget
 
 
@@ -332,9 +332,9 @@ async def credits(db: AsyncSession, member: Member, now: datetime | None = None)
     limit = await daily_limit(db, member)
     if limit is None:
         return {"limit": None, "used": await used_today(db, member, now), "left": None, "trial": False, "unlimited": True}
-    trials = await free_trials()
-    used = await used_ever(db, member)
-    return {"limit": trials, "used": min(used, trials), "left": max(0, trials - used), "trial": True, "unlimited": False}
+    cap = await daily_requests()
+    used = await used_today(db, member, now)
+    return {"limit": cap, "used": min(used, cap), "left": max(0, cap - used), "trial": True, "unlimited": False}
 
 
 async def run(db: AsyncSession, member: Member, tool: str, system: str, user: str, max_tokens: int = 1200, want_json: bool = False,
@@ -344,14 +344,9 @@ async def run(db: AsyncSession, member: Member, tool: str, system: str, user: st
         raise AIError("AI tools are not available right now.", 503)
     if not getattr(member, "verified", True):
         raise AIError("Confirm your email to use the AI tools. We sent you a link; use the button at the top of the page to resend it.", 403)
-    if tool not in FREE_TOOLS and (await daily_limit(db, member)) is not None:
-        # a member without a plan may use only the résumé fit check (and the free profile read at upload): every other AI tool is paid
-        raise AIError("AI tools are part of a paid plan. Subscribe to unlock résumé tailoring, cover letters, interview practice and job matching.", 402)
     c = await credits(db, member) if charge else {"left": 1, "trial": False, "limit": 0, "unlimited": False}
     if not c["unlimited"] and c["left"] <= 0:
-        if c["trial"]:
-            raise AIError("AI tools are part of a paid plan. Subscribe to unlock résumé help, job matching and interview practice.", 402)
-        raise AIError(f"You have used your {c['limit']:,} free AI requests. Subscribe to continue using AI tools.", 402)
+        raise AIError(f"You have used today's {c['limit']:,} free AI requests. They reset tomorrow.", 429)
     result = await complete(system, user, max_tokens=max_tokens, want_json=want_json, timeout=timeout)
     db.add(AiUsage(member_id=member.id, tool=(tool if charge else FREE_PREFIX + tool)[:30], model=result.model[:60],
                    input_tokens=result.input_tokens, output_tokens=result.output_tokens))

@@ -674,30 +674,20 @@ async def job_search(request: Request, db: AsyncSession = Depends(get_db), q: st
     sort = sort if sort in SORTS else "new"
     org = resolve_org(request, db)
     member = await current_member(request, db)
-    has_access = await _member_has_access(member, db)
+    has_access = await _member_has_access(member, db)      # a paid plan: it only matters for the apply link
     flt = Filters.make(country, type, level, paid, min_pay, max_pay, remote_from, visa)
-    # Preview: limit page and results for free users
-    if not has_access:
-        # The preview is capped per query, so cap queries too: otherwise varied searches walk the whole database.
-        throttle(request, "preview", 30, 60)
-        _preview_query_cap(request, q, loc, remote, days, country, type, level, paid, min_pay, max_pay, remote_from, visa)
-        page = 1
-        limit = config.PREVIEW_JOB_LIMIT
-    else:
-        limit = PAGE
+    if not member:
+        throttle(request, "board", 60, 60)                  # the whole board is open, so an anonymous visitor cannot page through it faster than a person would
+    limit = PAGE
     lens_ctx = await _lens_context(db, member, q, for_)
     reactions = await members.reaction_map(db, member)
     disliked = {jid for jid, st in reactions.items() if st == "disliked"} if reactions else set()   # hidden from the feed, in SQL
     total, rows = await search_page(db, org, q, loc, remote, days, (page - 1) * limit, limit, flt=flt, sort=sort, lens=lens_ctx["lens"],
                                     exclude=disliked or None)
-    if not has_access and total > config.PREVIEW_JOB_LIMIT:
-        rows = rows[: config.PREVIEW_JOB_LIMIT]
     saved = {jid for jid, st in reactions.items() if st in ("liked", "saved", "applied")}
     sib = await dedupe.locations_for(db, feed_query(org), rows)
     if member:
         await funnel.record(db, request, "matches_view", "lens" if lens_ctx["lens"] is not None else "all", member_id=member.id, once=True)
-    if not has_access and total > config.PREVIEW_JOB_LIMIT:
-        await funnel.record(db, request, "paywall_view", once=True)
     return templates.TemplateResponse(request, "board.html", dict(
         why=({j.id: lens_ctx["lens"].why(j.title) for j in rows} if lens_ctx["lens"] is not None else {}),
         lens_offer=lens_ctx["offer"], lens_on=lens_ctx["lens"] is not None, lens_paused=lens_ctx["paused"], lens_hint=lens_ctx["hint"], for_all=lens_ctx["for_all"],
@@ -707,10 +697,10 @@ async def job_search(request: Request, db: AsyncSession = Depends(get_db), q: st
         flt=flt, countries=(await filters_mod.country_options(db, feed_query(org), _feed_key(org))), job_types=filters_mod.TYPES,
         levels=filters_mod.LEVELS, country_names=classify_mod.COUNTRY_NAMES, pay_steps=filters_mod.PAY_STEPS,
         remote_regions=(await filters_mod.remote_region_options(db, feed_query(org), _feed_key(org))), visa_choices=filters_mod.VISA_CHOICES,
-        pages=max(1, -(-total // PAGE)) if has_access else 1,
+        pages=max(1, -(-total // PAGE)),
         now=datetime.utcnow(), show_badge=False,
         has_access=has_access, preview_limit=config.PREVIEW_JOB_LIMIT,
-        is_preview=not has_access))
+        is_preview=False))
 
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
@@ -733,11 +723,11 @@ async def job_detail(job_id: int, request: Request, org: Org = Depends(tenant), 
 
 @app.get("/go/{job_id}")
 async def apply_redirect(job_id: int, request: Request, org: Org = Depends(tenant), db: AsyncSession = Depends(get_db)):
-    """Send the seeker to the employer's own apply URL; count at most one click per IP/job/10min. Subscribers only."""
+    """Send the seeker to the employer's own apply URL; count at most one click per IP/job/10min. Subscribers only: this is the one paid step."""
     me = await current_member(request, db)
     if not (await _member_has_access(me, db)):
         # straight to a plan with the job remembered, so paying returns them to it (not to a generic pricing page)
-        return RedirectResponse(f"/checkout?plan=monthly&next={quote(f'/jobs/{job_id}', safe='')}", status_code=303)
+        return RedirectResponse(f"/checkout?plan=pass&next={quote(f'/jobs/{job_id}', safe='')}", status_code=303)
     job = await db.scalar(feed_query(org).where(Job.id == job_id))
     if not job or not (job.url or "").strip():
         raise HTTPException(404, "Job not found")
@@ -1279,8 +1269,6 @@ async def resume_save(request: Request, db: AsyncSession = Depends(get_db), text
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     throttle(request, "resume", 30, 3600)
     try:
         r = await resume_mod.save_text(db, m, text)
@@ -1313,8 +1301,6 @@ async def resume_upload_route(request: Request, db: AsyncSession = Depends(get_d
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     throttle(request, "resume", 30, 3600)
     try:
         if file is None or not file.filename:
@@ -1335,8 +1321,6 @@ async def resume_profile_build(request: Request, db: AsyncSession = Depends(get_
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/resume", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     r = await resume_mod.get_main(db, m)
     if not r or not resume_mod.text_of(r):
         return RedirectResponse("/resume", status_code=303)
@@ -1392,8 +1376,6 @@ async def match_page(request: Request, db: AsyncSession = Depends(get_db)):
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/match", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     return await _match_page(request, db, m)
 
 
@@ -1402,8 +1384,6 @@ async def match_run(request: Request, db: AsyncSession = Depends(get_db), remote
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/match", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     flt = Filters.make(remote_from=remote_from, visa=visa, paid=paid)
     r = await resume_mod.get_main(db, m)
     if not (await ai.enabled()):
@@ -1449,19 +1429,6 @@ async def _letter_form(request: Request, db: AsyncSession, m: Member, job: Job, 
         length=form.get("length", "standard"), emphasis=form.get("emphasis", "")), status_code=code)
 
 
-async def _paywall_redirect(db: AsyncSession, m: Member, job_id: int | None = None):
-    """None for a subscriber. For anyone else, the redirect to the paywall that brings them back to this job once they have paid
-    (or, for an AI tool that is not tied to a job, to the plans page)."""
-    if await _member_has_access(m, db):
-        return None
-    if job_id is None:
-        return RedirectResponse("/pricing?from=ai-tools", status_code=303)
-    after = f"/jobs/{job_id}?unlocked=1"
-    if not await onboarding_mod.is_complete(db, m):
-        return RedirectResponse("/onboarding?" + urlencode({"plan": "monthly", "next": after}), status_code=303)
-    return RedirectResponse("/checkout?" + urlencode({"plan": "monthly", "next": after}), status_code=303)
-
-
 async def _visible_job(db: AsyncSession, job_id: int) -> Job:
     job = await db.scalar(feed_query().where(Job.id == job_id))
     if not job:
@@ -1474,8 +1441,6 @@ async def letter_form_page(job_id: int, request: Request, db: AsyncSession = Dep
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/cover-letter", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     return await _letter_form(request, db, m, (await _visible_job(db, job_id)))
 
 
@@ -1485,8 +1450,6 @@ async def letter_write(job_id: int, request: Request, db: AsyncSession = Depends
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/cover-letter", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     job = await _visible_job(db, job_id)
     form = dict(name=name, tone=tone, length=length, emphasis=emphasis)
     if not (await ai.enabled()):
@@ -1636,8 +1599,6 @@ async def tailor_form_page(job_id: int, request: Request, db: AsyncSession = Dep
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/tailor", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     return await _tailor_form(request, db, m, (await _visible_job(db, job_id)))
 
 
@@ -1646,8 +1607,6 @@ async def tailor_make(job_id: int, request: Request, db: AsyncSession = Depends(
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/tailor", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     job = await _visible_job(db, job_id)
     if not (await ai.enabled()):
         return await _tailor_form(request, db, m, job, "Résumé tailoring is not available right now.", 503, emphasis=emphasis)
@@ -1798,8 +1757,6 @@ async def interview_new(request: Request, db: AsyncSession = Depends(get_db), ro
     m = await current_member(request, db)
     if not m:
         return RedirectResponse("/member/login?next=/interview", status_code=303)
-    if (gate := await _paywall_redirect(db, m)):
-        return gate
     form = dict(role=role, company=company, posting=posting)
     if not (await ai.enabled()):
         return await _interview_list(request, db, m, "The interview coach is not available right now.", 503, form=form)
@@ -1818,8 +1775,6 @@ async def interview_for_job(job_id: int, request: Request, db: AsyncSession = De
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     job = await _visible_job(db, job_id)
     if not (await ai.enabled()):
         return await _interview_list(request, db, m, "The interview coach is not available right now.", 503)
@@ -1899,12 +1854,12 @@ async def company_page(slug_id: str, request: Request, db: AsyncSession = Depend
     ids = [c.id for c in (await companies.family(db, company))] or [company.id]
     me = await current_member(request, db)
     has_access = await _member_has_access(me, db)
-    per = companies.PER_PAGE if has_access else config.PREVIEW_JOB_LIMIT
-    total, rows = await companies.jobs_page(db, ids, page if has_access else 1, per)
+    per = companies.PER_PAGE
+    total, rows = await companies.jobs_page(db, ids, page, per)
     st = await companies.stats(db, ids)
     website = main_record.website if (main_record.website or "").startswith(("http://", "https://")) else ""
     return templates.TemplateResponse(request, "company.html", dict(
-        org=None, company=main_record, st=st, jobs=rows, total=total, page=page if has_access else 1, pages=max(1, -(-total // per)),
+        org=None, company=main_record, st=st, jobs=rows, total=total, page=page, pages=max(1, -(-total // per)),
         has_access=has_access, website=website, canonical_url=f"{config.PUBLIC_URL}{want}", now=datetime.utcnow(),
         following=(await follows.is_following(db, me, main_record)), signed_in=me is not None,
         sib=(await dedupe.locations_for(db, feed_query(), rows)), reactions=(await members.reaction_map(db, me))))
@@ -2354,9 +2309,6 @@ async def alerts_subscribe(request: Request, org: Org = Depends(tenant), db: Asy
     if website:  # honeypot field: real members never fill it
         return _alert_page(request, org, "Check your email", "We sent you a confirmation link.")
     throttle(request, "alerts", 20, 3600)
-    if frequency == "hourly" and not (await _member_has_access((await current_member(request, db)), db)):
-        return _alert_page(request, org, "Hourly alerts are for subscribers",
-                           "Sign in with a paid plan to get hourly alerts, or choose daily or weekly. Daily and weekly alerts are free.", 403)
     me = await current_member(request, db)
     trusted = bool(me and me.verified and me.email == email.strip().lower())     # their own confirmed address: no double opt-in needed
     try:
@@ -2406,9 +2358,7 @@ async def api_jobs(request: Request, db: AsyncSession = Depends(get_db),
     if not security.limiter.hit(f"api:{security.client_ip(request)}", 60, 60):
         raise HTTPException(429, "Rate limit exceeded")
     org = resolve_org(request, db)
-    has_access = await _member_has_access((await current_member(request, db)), db)
-    if not has_access:   # same cap as the web preview: first page only, no apply links
-        offset, limit = 0, min(limit, config.PREVIEW_JOB_LIMIT)
+    has_access = await _member_has_access((await current_member(request, db)), db)     # the listing is open; the apply link is for a paid plan
     total, rows = await search_page(
         db, org, q, loc, remote, days, offset, limit,
         flt=Filters.make(country, type, level, paid, min_pay, max_pay, remote_from, visa),
@@ -2417,7 +2367,7 @@ async def api_jobs(request: Request, db: AsyncSession = Depends(get_db),
     sib = await dedupe.locations_for(db, feed_query(org), rows)
     return {
         "total": total,
-        "preview": not has_access,
+        "preview": False,
         "jobs": [
             dict(
                 id=j.id, title=j.title, company=j.company.name, location=j.location, remote=j.remote,
@@ -2697,8 +2647,6 @@ async def prepare_application(job_id: int, request: Request, org: Org = Depends(
     m = await current_member(request, db)
     if not m:
         return RedirectResponse(f"/member/login?next=/jobs/{job_id}/prepare", status_code=303)
-    if (gate := await _paywall_redirect(db, m, job_id)):
-        return gate
     job = await db.scalar(feed_query(org).where(Job.id == job_id))
     if not job:
         raise HTTPException(404, "Job not found")

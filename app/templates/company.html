@@ -72,16 +72,7 @@
 <h2 style="font-size:1.15rem;margin-top:24px">Open roles</h2>
 {% if jobs %}
   {% for j in jobs %}{% include "_job_card.html" %}{% endfor %}
-  {% if not has_access and total > jobs|length %}
-  <div class="paywall-cta">
-    <div class="big">{{ total - jobs|length }} more open role{{ '' if (total - jobs|length) == 1 else 's' }} at {{ company.name }}</div>
-    <p class="muted">Subscribe to see every role and apply straight on their career page.</p>
-    <a class="btn" href="/checkout?plan=pass" style="background:#111">Get the 3-day pass &mdash; $3</a>
-    <p class="muted" style="font-size:13px;margin:8px 0 0">Pay once, no renewal.</p>
-    <p class="muted" style="font-size:13px;margin:6px 0 0">Searching longer? <a href="/checkout?plan=monthly">Monthly &mdash; $20</a> &middot; <a href="/checkout?plan=weekly">Weekly &mdash; $7</a> &middot; <a href="/pricing">All plans</a></p>
-  </div>
-  {% endif %}
-  {% if has_access and pages > 1 %}
+  {% if pages > 1 %}
   <div class="pager">
     {% if page > 1 %}<a class="btn" href="?page={{ page - 1 }}">&larr;</a>{% endif %}
     <span class="muted">Page {{ page }} of {{ pages }}</span>

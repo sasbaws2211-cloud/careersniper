@@ -30,7 +30,7 @@ SECRET_KEYS = {"ai_api_key"}
 # every key an admin may store, and the type its value must have
 KEYS: dict[str, type] = {
     "ai_enabled": bool, "ai_provider": str, "ai_base_url": str, "ai_model": str, "ai_api_key": str, "ai_token_param": str,
-    "ai_timeout": float, "ai_max_output_tokens": int, "ai_max_concurrency": int, "ai_json_mode": bool, "ai_free_requests": int,
+    "ai_timeout": float, "ai_max_output_tokens": int, "ai_max_concurrency": int, "ai_json_mode": bool, "ai_free_requests": int, "ai_daily_requests": int,
     "ai_requests_pass": int, "ai_requests_weekly": int, "ai_requests_monthly": int, "ai_requests_lifetime": int,
 }
 _cache: dict = {"at": 0.0, "values": None, "unreadable": []}

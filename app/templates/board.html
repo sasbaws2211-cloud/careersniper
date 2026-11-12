@@ -47,34 +47,9 @@
 <div class="hero">
   <h1>{{ org.tagline or "Jobs from company career pages" }}</h1>
   <div class="muted">
-    {% if is_preview is defined and is_preview %}
-      Free preview · showing {{ jobs|length }} of {{ total }} matching role{{ '' if total == 1 else 's' }}
-    {% else %}
-      {{ total }} open role{{ '' if total == 1 else 's' }}
-    {% endif %}
+    {{ '{:,}'.format(total) }} open role{{ '' if total == 1 else 's' }}
   </div>
 </div>
-
-{% if is_preview is defined and is_preview %}
-{% set onboarding_pricing = ('/onboarding?welcome=1&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-{% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-<div class="card" style="background:#eff6ff;border-color:#93c5fd;margin-bottom:16px;color:#1f2937;">
-  {% if lens_on and total > (jobs|length) %}
-    <b>{{ '{:,}'.format(total) }} roles match {{ lens_offer.summary }}.</b>
-    <span>You are seeing {{ jobs|length }} in the free preview; the other {{ '{:,}'.format(total - (jobs|length)) }} unlock with a plan.</span>
-  {% else %}
-    <b>You're viewing a free preview.</b>
-    {% if total > (jobs|length) %}
-      <span>{{ '{:,}'.format(total - (jobs|length)) }} more matching job{{ '' if (total - jobs|length) == 1 else 's' }} are behind the paywall.</span>
-    {% endif %}
-  {% endif %}
-  Unlock the full database, all filters, and direct apply for $3.
-  {% set onboarding_pass_top = ('/onboarding?welcome=1&plan=pass&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-  <a class="btn" href="{% if memail %}/checkout?plan=pass{% else %}/member/signup?next={{ onboarding_pass_top }}{% endif %}" style="margin-left:8px;background:#111">Get the 3-day pass — $3</a>
-  <a href="{% if memail %}/pricing{% else %}/member/signup?next={{ onboarding_pricing }}{% endif %}" style="margin-left:10px;font-size:14px">See all plans</a>
-  <div class="muted" style="font-size:13px;margin-top:8px">{{ refund_days }}-day money-back promise on every plan. Cancel any time.</div>
-</div>
-{% endif %}
 
 {% if lens_on %}
 <div class="card lens" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-color:var(--brand)">
@@ -86,12 +61,8 @@
 {% elif lens_offer and for_all %}
 <div class="card muted" style="padding:10px 14px">Showing all jobs. <a href="/jobs">Show only jobs that match {{ 'your résumé' if lens_source == 'resume' else 'your answers' }} ({{ lens_offer.summary }})</a></div>
 {% elif lens_hint %}
-{% if has_access %}
 <div class="card" style="padding:10px 14px"><b>See jobs that fit you.</b> <a href="/resume">Upload your résumé</a> and this page shows the roles that match your experience.</div>
-{% else %}
-<div class="card" style="padding:10px 14px;background:#f8fafc"><b>&#128274; Jobs matched to your résumé.</b> Résumé upload is part of a plan, from $3 for 3 days.
-  <a href="/pricing?from=resume">See plans</a></div>
-{% endif %}
+
 {% endif %}
 
 <div class="jobs-layout">
@@ -173,22 +144,8 @@
   {% include "_job_card.html" %}
   {% endfor %}
 
-  {% if is_preview is defined and is_preview and total > (jobs|length) %}
-  {% set onboarding_pass = ('/onboarding?welcome=1&plan=pass&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-  {% set onboarding_weekly = ('/onboarding?welcome=1&plan=weekly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-  {% set onboarding_monthly = ('/onboarding?welcome=1&plan=monthly&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-  {% set onboarding_lifetime = ('/onboarding?welcome=1&plan=lifetime&next=' ~ ('/jobs?onboarded=1'|urlencode))|urlencode %}
-  <div class="paywall-cta">
-    <div class="big">{{ total - (jobs|length) }} more job{{ '' if (total - jobs|length) == 1 else 's' }} match your search</div>
-    <p class="muted">Subscribe to see every listing, use all filters, and apply directly to company career pages.</p>
-    <a class="btn" href="{% if memail %}/checkout?plan=pass{% else %}/member/signup?next={{ onboarding_pass }}{% endif %}" style="background:#111">Get the 3-day pass — $3</a>
-    <p class="muted" style="font-size:13px;margin:8px 0 0">Pay once, no renewal. Most people finish a first search in a few days.</p>
-    <p class="muted" style="font-size:13px;margin:6px 0 0">Searching longer? <a href="{% if memail %}/checkout?plan=monthly{% else %}/member/signup?next={{ onboarding_monthly }}{% endif %}">Monthly — $20</a> &middot; <a href="{% if memail %}/checkout?plan=weekly{% else %}/member/signup?next={{ onboarding_weekly }}{% endif %}">Weekly — $7</a> &middot; <a href="/pricing">All plans</a></p>
-  </div>
-  {% endif %}
-
   {% set qs = ('&for=all' if for_all else '') ~ '&q=' ~ (q|urlencode) ~ '&loc=' ~ (loc|urlencode) ~ '&days=' ~ days ~ ('&remote=true' if remote else '') ~ ('&country=' ~ flt.country if flt.country else '') ~ ('&type=' ~ flt.job_type if flt.job_type else '') ~ ('&level=' ~ flt.seniority if flt.seniority else '') ~ ('&paid=true' if flt.paid else '') ~ ('&remote_from=' ~ flt.remote_from if flt.remote_from else '') ~ ('&visa=' ~ flt.visa if flt.visa else '') ~ ('&sort=' ~ sort if sort != 'new' else '') ~ ('&min_pay=' ~ flt.pay_min if flt.pay_min else '') ~ ('&max_pay=' ~ flt.pay_max if flt.pay_max else '') %}
-  {% if pages > 1 and not (is_preview is defined and is_preview) %}
+  {% if pages > 1 %}
   <div class="pager">
     {% if page > 1 %}<a class="btn" href="?page={{ page-1 }}{{ qs }}">←</a>{% endif %}
     <span class="muted">Page {{ page }} of {{ pages }}</span>
@@ -225,7 +182,7 @@
     </label>
     <label>Frequency
       <select name="frequency">
-        {% if has_access %}<option value="hourly">Hourly &mdash; be first to apply</option>{% else %}<option value="hourly" disabled>Hourly (subscribers only)</option>{% endif %}
+        <option value="hourly">Hourly &mdash; be first to apply</option>
         <option value="daily" selected>Daily</option>
         <option value="weekly">Weekly</option>
       </select>

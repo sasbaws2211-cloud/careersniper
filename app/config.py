@@ -51,7 +51,7 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(3),
         "interval": "once",          # one payment, no renewal
         "days": 3,
-        "description": "Full access for 3 days, paid once and never renewed. A low-risk way to try everything.",
+        "description": "Apply links for 3 days, paid once and never renewed. A low-risk way to apply.",
     },
     "weekly": {
         "label": "Weekly",
@@ -62,7 +62,7 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(7),
         "interval": "weekly",
         "days": 7,
-        "description": "Full access for 7 days. Perfect for an intensive search week.",
+        "description": "Apply links for 7 days. Perfect for an intensive search week.",
     },
     "monthly": {
         "label": "Monthly",
@@ -73,7 +73,7 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(20),
         "interval": "monthly",
         "days": 30,
-        "description": "Full access for 30 days. Best for most job seekers.",
+        "description": "Apply links for 30 days. Best for most job seekers.",
     },
     "lifetime": {
         "label": "Lifetime",
@@ -84,7 +84,7 @@ CONSUMER_PLANS = {
         "price_ghs_display": _ghs_display(50),
         "interval": "lifetime",
         "days": 36500,
-        "description": "One-time payment. Lifetime access to the job database.",
+        "description": "One-time payment. Apply links forever.",
     },
 }
 
@@ -143,7 +143,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "60"))
 AI_MAX_OUTPUT_TOKENS = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "6000"))   # hard ceiling on one answer, whatever a tool asks for
 AI_MAX_CONCURRENCY = int(os.getenv("AI_MAX_CONCURRENCY", "8"))           # model calls in flight at once
-AI_FREE_REQUESTS = int(os.getenv("AI_FREE_REQUESTS", "0"))               # lifetime AI requests for members without a paid plan
+AI_FREE_REQUESTS = int(os.getenv("AI_FREE_REQUESTS", "0"))               # no longer used: AI is open to every verified member, capped per day by AI_DAILY_REQUESTS
+AI_DAILY_REQUESTS = int(os.getenv("AI_DAILY_REQUESTS", "20"))            # AI requests per day for a member without a paid plan (a paid plan is unlimited)
 AI_JSON_MODE = os.getenv("AI_JSON_MODE", "0") == "1"                     # ask OpenAI-style servers for response_format=json_object (not all support it)
 AI_TOKEN_PARAM = os.getenv("AI_TOKEN_PARAM", "")                         # override: max_tokens or max_completion_tokens
 AI_EXTRA_BODY = os.getenv("AI_EXTRA_BODY", "")                           # JSON merged into every OpenAI-style request, e.g. {"chat_template_kwargs": {"enable_thinking": false}} to stop a reasoning model spending its token budget on thinking

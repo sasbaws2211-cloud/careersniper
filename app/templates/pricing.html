@@ -3,7 +3,7 @@
 {% for _p in CONSUMER_PLANS.values() %}{% set _ns.items = _ns.items + [_p.label ~ ' $' ~ _p.price_usd] %}{% endfor %}
 {% set seo = {
   'title': brand_title('Pricing: Day Pass to Lifetime Access', PLATFORM),
-  'description': clip('Unlock every job and its apply link. ' ~ (_ns.items|join(', ')) ~ '. Preview jobs free first.'),
+  'description': clip('Search every job free. Pay only to apply. ' ~ (_ns.items|join(', ')) ~ '.'),
   'canonical': '/pricing',
   'robots': 'index,follow,max-image-preview:large',
   'jsonld': [breadcrumbs([(PLATFORM, '/'), ('Pricing', '/pricing')])]
@@ -69,7 +69,7 @@
 <div class="band">
   <div class="hero">
     <h1>Pricing that pays for itself</h1>
-    <p class="sub">Preview the jobs free, then unlock full search, filters and alerts when you are ready. No contracts, and a {{ REFUND_DAYS }}-day money-back promise.</p>
+    <p class="sub">Search every job, use every filter and the AI tools for free. You pay only when you want to apply. No contracts, and a {{ REFUND_DAYS }}-day money-back promise.</p>
     {% if stats %}
     <div class="counter" aria-label="Live job counts">
       <span><b>{{ '{:,}'.format(stats.jobs) }}</b> open jobs</span>
@@ -82,7 +82,7 @@
 
 <div class="section wide">
   <h2>Simple pricing</h2>
-  <p class="muted-center">Preview free. Unlock full search when you’re ready. Pay by card from anywhere in the world (USD shown; the amount charged is under each plan).</p>
+  <p class="muted-center">Search free. Pay when you apply. Pay by card from anywhere in the world (USD shown; the amount charged is under each plan).</p>
   <p class="curpick">Prices in:
     {% for code, spec in currencies.items() %}<a href="/pricing?cur={{ code }}" class="{{ 'on' if code == cur }}" title="{{ spec.name }}">{{ code }}</a>{% endfor %}
     <br><span class="muted" style="font-size:0.85rem">Other currencies shown are estimates.</span></p>
@@ -95,10 +95,10 @@
       <div class="price">$3 <span>once</span></div>
       <div class="ghs">{{ CONSUMER_PLANS.pass.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
       {% if approx(3, cur) %}<div class="local">{{ approx(3, cur) }}</div>{% endif %}
-      <p class="muted">Try everything, no renewal</p>
+      <p class="muted">Apply to jobs, no renewal</p>
       <ul>
-        <li>Full search &amp; filters</li>
-        <li>Direct apply links</li>
+        <li>Direct apply links for 3 days</li>
+        <li>Apply tracked in your tracker</li>
         <li>Never auto-renews</li>
       </ul>
       <a class="btn" href="{{ plan_url('pass') }}">Get the pass</a>
@@ -109,10 +109,9 @@
       <div class="ghs">{{ CONSUMER_PLANS.weekly.price_ghs_display if CONSUMER_PLANS is defined else "" }}</div>
       {% if approx(7, cur) %}<div class="local">{{ approx(7, cur) }}</div>{% endif %}
       <ul>
-        <li>Full search &amp; filters</li>
-        <li>Direct apply links</li>
-        <li>Like / dislike ranking</li>
-        <li>Email job alerts</li>
+        <li>Direct apply links for 7 days</li>
+        <li>Apply tracked in your tracker</li>
+        <li>Unlimited AI requests</li>
       </ul>
       <a class="btn" href="{{ plan_url('weekly') }}">Get Weekly</a>
     </div>
@@ -137,8 +136,8 @@
       {% if approx(50, cur) %}<div class="local">{{ approx(50, cur) }}</div>{% endif %}
       <ul>
         <li>Pay once, keep access</li>
-        <li>Full search forever</li>
-        <li>Alerts included</li>
+        <li>Apply links forever</li>
+        <li>Unlimited AI requests</li>
       </ul>
       <a class="btn" href="{{ plan_url('lifetime') }}">Get Lifetime</a>
     </div>
@@ -146,14 +145,14 @@
 </div>
 
 <div class="section wide">
-  <h2>Every plan includes</h2>
+  <h2>Free for everyone, and every plan</h2>
   <div class="included">
-    <div><b>Full job search</b><span>Every live role, not a 15-job preview.</span></div>
-    <div><b>All the filters</b><span>Country, level, pay, remote-from, visa sponsorship.</span></div>
-    <div><b>Direct apply links</b><span>Straight to the company's own career page.</span></div>
-    <div><b>Job alerts</b><span>Daily or weekly digests; hourly on a paid plan.</span></div>
+    <div><b>Full job search</b><span>Every live role. Free, no account needed.</span></div>
+    <div><b>All the filters</b><span>Country, level, pay, remote-from, visa sponsorship. Free.</span></div>
+    <div><b>Direct apply links</b><span>Straight to the company's own career page. This is what a plan unlocks.</span></div>
+    <div><b>Job alerts</b><span>Hourly, daily or weekly digests. Free.</span></div>
     <div><b>Application tracker</b><span>Keep every job you are chasing in one place.</span></div>
-    <div><b>AI tools</b><span>R&eacute;sum&eacute; fit check, tailored r&eacute;sum&eacute;s, cover letters and interview practice, with unlimited requests on paid plans (subject to provider availability and fair-use protections).</span></div>
+    <div><b>AI tools</b><span>R&eacute;sum&eacute; fit check, tailored r&eacute;sum&eacute;s, cover letters and interview practice, free for a signed-in member up to a daily limit, and unlimited on a paid plan (subject to provider availability and fair-use protections).</span></div>
   </div>
 </div>
 
@@ -168,8 +167,8 @@
     <p class="muted">Weekly and monthly plans renew until you cancel from your account page, and you keep access to the end of the period you paid for. The 3-day pass and Lifetime are one payment and never renew.</p>
   </details>
   <details>
-    <summary>Can I try before paying?</summary>
-    <p class="muted">Yes. Browse a free preview of live jobs, then unlock the full results when you subscribe.</p>
+    <summary>What do I get for free?</summary>
+    <p class="muted">Everything except the apply link: the full job search, every filter, alerts, the application tracker and a daily allowance of AI tools. You pay only when you click Apply.</p>
   </details>
   <details>
     <summary>Which currency will I be charged in?</summary>
@@ -181,5 +180,5 @@
   </details>
 </div>
 
-<p class="back-cta"><a class="btn" href="/jobs">Browse the free preview</a></p>
+<p class="back-cta"><a class="btn" href="/jobs">Search jobs free</a></p>
 {% endblock %}

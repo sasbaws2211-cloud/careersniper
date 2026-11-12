@@ -15,7 +15,7 @@ from .models import Job, Subscriber
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,}$")
 MAX_ALERTS_PER_EMAIL = 5
 CONFIRM_RESEND = timedelta(minutes=10)
-# The scheduler ticks hourly, so "hourly" is due after 50 minutes. Hourly is a paid feature (hourly_allowed).
+# The scheduler ticks hourly, so "hourly" is due after 50 minutes. Hourly is open to everyone (hourly_allowed).
 DUE = {"hourly": timedelta(minutes=50), "daily": timedelta(hours=23), "weekly": timedelta(days=6, hours=23)}
 
 
@@ -28,8 +28,8 @@ def org_url(org=None) -> str:
 
 
 async def hourly_allowed(db: AsyncSession, email: str) -> bool:
-    """Hourly alerts are for people with a live paid plan (or any member while billing is off in development)."""
-    return config.free_access() or (await billing.has_active_access(db, email=email))
+    """Hourly alerts are open to everyone now: the only paid step is the apply link."""
+    return True
 
 
 def _describe(s: Subscriber) -> str:

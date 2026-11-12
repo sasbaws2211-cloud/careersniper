@@ -6,13 +6,16 @@ Jobs are scraped from public ATS boards (Greenhouse, Lever, Ashby, …) into one
 
 ## Pricing (consumer)
 
-| Plan     | Price   | Access                          |
-|----------|---------|---------------------------------|
-| Weekly   | $7      | Full access for 7 days          |
-| Monthly  | $20     | Full access for 30 days         |
-| Lifetime | $50     | One-time, lifetime access       |
+Searching is free. The only paid step is the apply link (`/go/{id}`): every other part of the product is open.
 
-Free preview shows a limited number of matching jobs. Full search, filters, alerts, saved jobs, and AI tools require an active plan.
+| Plan       | Price | Apply links for        |
+|------------|-------|------------------------|
+| 3-day pass | $3    | 3 days, paid once      |
+| Weekly     | $7    | 7 days                 |
+| Monthly    | $20   | 30 days                |
+| Lifetime   | $50   | one-time, no expiry    |
+
+Free for everyone: the full job search and every filter (no preview cap), company and remote-job pages, hourly/daily/weekly alerts, and the free tools. Free for a signed-in, email-verified member: the application tracker, likes, résumé upload, and the AI tools (fit check, tailored résumé, cover letter, interview practice, job matching) up to `AI_DAILY_REQUESTS` a day (default 20); a paid plan has no daily limit. An anonymous visitor is rate-limited on the board (60 requests a minute). The public API lists every job but only includes `apply_url` for a paid member. Clicking Apply without a plan goes to checkout with the 3-day pass.
 
 ## Run locally
 

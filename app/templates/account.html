@@ -24,7 +24,7 @@
     <p class="muted">Your {{ sub.plan }} plan ended on {{ sub.current_period_end.strftime('%Y-%m-%d') if sub.current_period_end else '—' }}.</p>
     <a class="btn" href="/pricing">Renew access</a>
   {% else %}
-    <p class="muted">No active plan. You're on the free preview.</p>
+    <p class="muted">No active plan. Searching, filters, alerts and AI tools are free; a plan unlocks the apply links.</p>
     <a class="btn" href="/pricing">See plans</a>
   {% endif %}
 </div>
